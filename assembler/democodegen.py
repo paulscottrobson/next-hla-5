@@ -19,6 +19,11 @@ class DemoCodeGenerator(object):
 		self.vars = 0x2000
 		self.ops = { "+":"add","-":"sub","*":"mul","/":"div","%":"mod","&":"and","|":"ora","^":"xor" }
 	#
+	#		Get current address
+	#
+	def getAddress(self):
+		return self.pc
+	#
 	#		Load a constant or variable into the accumulator.
 	#
 	def loadDirect(self,isConstant,value):
