@@ -3,7 +3,7 @@
 #
 #		Name : 		democodegen.py
 #		Author :	Paul Robson (paul@robsons.org.uk)
-#		Date : 		23rd December 2018
+#		Date : 		24th December 2018
 #		Purpose :	Dummy Code Generator class
 #
 # ***************************************************************************************
@@ -23,38 +23,37 @@ class DemoCodeGenerator(object):
 	#
 	def loadDirect(self,isConstant,value):
 		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
-		print("${0:06x}  lda  {1}".format(self.pc,src))
-		self.pc += 1
-	#
-	#		Indirect load - identifier + constant/variable
-	#
-	def loadIndirect(self,address,isConstant,value):
-		self.loadDirect(False,address)
-		self.binaryOperation("+",isConstant,value)
-		print("${0:06x}  lda  [a]".format(self.pc))
+		print("${0:06x}  lda   {1}".format(self.pc,src))
 		self.pc += 1
 	#
 	#		Do a binary operation on a constant or variable on the accumulator
 	#
 	def binaryOperation(self,operator,isConstant,value):
-		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
-		print("${0:06x}  {1}  {2}".format(self.pc,self.ops[operator],src))
-		self.pc += 1
+		if operator == "!" or operator == "?":
+			self.binaryOperation("+",isConstant,value)
+			print("${0:06x}  lda.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))			
+			self.pc += 1
+		else:
+			src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
+			print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
+			self.pc += 1
 	#
 	#		Store direct
 	#
 	def storeDirect(self,value):
-		print("${0:06x}  lda  (${1:04x})".format(self.pc,value))
+		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
 		self.pc += 1
 	#
-	#		Indirect store - identifier + constant/variable
+	#		Copy A to index, A indeterminate.
 	#
-	def storeIndirect(self,address,isConstant,value):
-		print("${0:06x}  tab".format(self.pc))
+	def transferIndex(self):
+		print("${0:06x}  tax".format(self.pc))
 		self.pc += 1
-		self.loadDirect(False,address)
-		self.binaryOperation("+",isConstant,value)
-		print("${0:06x}  stb  [a]".format(self.pc))
+	#
+	#		Store indirect
+	#
+	def storeIndirect(self,operator):
+		print("${0:06x}  sta.{1} [x]".format(self.pc,"b" if operator == "?" else "w"))
 		self.pc += 1
 	#
 	#		Allocate space for n variables. Must be a continuous block.
@@ -62,21 +61,21 @@ class DemoCodeGenerator(object):
 	def allocSpace(self,count):
 		addr = self.vars
 		self.vars += (2 * count)
-		print("${0:06x}  dw   {1}".format(addr,",".join(["$0000"]*count)))
+		print("${0:06x}  dw    {1}".format(addr,",".join(["$0000"]*count)))
 		return addr
 	#
 	#		Load A with address of string constant
 	#
 	def loadStringConstant(self,string):
 		sAddr = self.pc
-		print("${0:06x}  db   \"{1}\",0".format(self.pc,string))
+		print("${0:06x}  db    \"{1}\",0".format(self.pc,string))
 		self.pc += len(string)+1
 		self.loadDirect(True,sAddr)
 	#
 	#		Call a subroutine
 	#
 	def callSubroutine(self,address):
-		print("${0:06x}  jsr  ${1:06x}".format(self.pc,address))
+		print("${0:06x}  jsr   ${1:06x}".format(self.pc,address))
 		self.pc += 1
 	#
 	#		Return from subroutine.
@@ -90,16 +89,16 @@ if __name__ == "__main__":
 	cg.loadDirect(True,42)
 	cg.loadDirect(False,42)	
 	print("------------------")
-	cg.loadIndirect(1025,True,48)
-	cg.loadIndirect(1025,False,48)
-	print("------------------")
 	cg.binaryOperation("%",True,44)
 	cg.binaryOperation("&",False,44)	
+	cg.binaryOperation("?",True,44)
+	cg.binaryOperation("!",False,44)
 	print("------------------")
 	cg.storeDirect(46)
 	print("------------------")
-	cg.storeIndirect(1025,True,48)
-	cg.storeIndirect(1025,False,48)
+	cg.transferIndex()
+	cg.storeIndirect("?")
+	cg.storeIndirect("!")
 	print("------------------")
 	cg.allocSpace(4)
 	cg.allocSpace(1)	
@@ -109,3 +108,4 @@ if __name__ == "__main__":
 	cg.callSubroutine(42)
 	cg.returnSubroutine()
 	print("------------------")
+
