@@ -76,7 +76,8 @@ class Assembler(object):
 	#
 	#		Assemble a procedure. Check the definition syntax, check the parameters and
 	#		build an information structure which is added to the globals.
-	#		Scan the code for new locals and generate the code, then zap the locals.
+	#		Scan the code for new locals (all identifiers should be globals, <ident>= 
+	#		or parameters) allocate them statically,generate the code, then zap the locals.
 	#
 	def assembleProcedure(self,lineNumber,definition,body):
 		m = re.match("^def\s*("+self.rx_Identifier+")\((.*)\)\:$",definition)		# check definition syntax
@@ -94,13 +95,27 @@ class Assembler(object):
 			if not self.rxc_Identifier.match(pName): 								# check it.
 				raise AssemblerException("Bad Parameter "+pName)
 			self.add({"name":pName,"type":"v","value":pMem+p*2},True)				# add each one.
+		self.localCheck = re.compile("^("+self.rx_Identifier+")\s*\=")				# test for locals.
+
+		self.localScan(body)														# scan for undetermined assignments
 		#
-		#	TODO: Scan for locals
 		# 	TODO: Generate code
 		#
 		self.codeGenerator.returnSubroutine()										# generate end of func code.
 		print("LOCAL",self.locals)
 		self.clearLocals()															# forget all locals
+	#
+	#		Recursive scan checking for locals.
+	#
+	def localScan(self,level):
+		for cmd in level:															# scan at this level of indent
+			if type(cmd) is list:													# a list, e.g. sublevels
+				self.localScan(cmd)													# scan that list
+			else:
+				m = self.localCheck.match(cmd)										# is it an <ident> = something
+				if m is not None:
+					if m.group(1).lower() not in self.locals:						# not already existing, create it
+						self.add({"name":m.group(1).lower(),"type":"v","value":self.codeGenerator.allocSpace(1)},True)						
 	#
 	#		Group code so its each level has code at that level + arrays at sub levels.
 	#
@@ -174,6 +189,8 @@ const test.value = 3	# a constant
 #
 def demo1.func(a,b,c):
 	test = a+b+c
+	x = 42+"hello world"
+	x = c + 1-'x'
 def demo2(a,b):
 	if a-b=0:
 		a=a+1		
