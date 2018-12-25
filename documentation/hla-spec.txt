@@ -2,7 +2,7 @@
 //		Comments
 //
 proc <identifier>(<ident>,<ident>....)		Defines a procedure here. Erases all local variables, allocates
-											static variables for the parameter idents.
+											static variables for the parameter idents. Reset structure stack.
 
 <xterm><op><term><op><term> 				<xterm> is identifier or identifier[const|identifier]
 											<term> is const or identifier
@@ -14,7 +14,7 @@ proc <identifier>(<ident>,<ident>....)		Defines a procedure here. Erases all loc
 
 <cond> is an expr ending in <0 =0 #0
 
-while <cond> : <statements> : wend 			while loop
+while <cond> : <statements> : endwhile		while loop
 if <cond> : <statements> : endif			multi line condition
 for <expr> : <statements> : endfor 			writes to 'index', if defined.
 endproc 									return from subroutine (can be multiple)
@@ -33,7 +33,7 @@ Processing
 Comments out, tabs out, space stripping
 Remove all quoted strings.
 Joined by ~ and :
-Split into procedures (at proc <identifier>) and process seperately.
+Split into procedures (at proc <identifier>) and process seperately. No code before first proc, or between !
 - scan for globals (including old ones) and locals 
 - process each instruction once at a time.
 
