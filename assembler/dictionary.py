@@ -18,6 +18,7 @@ class Dictionary(object):
 	#		Add an entry
 	#
 	def add(self,info):
+		#print("adding:",info)
 		key = info["name"].strip().lower()
 		if key in self.identifiers:
 			raise AssemblerException("Duplicate identifier "+key)
