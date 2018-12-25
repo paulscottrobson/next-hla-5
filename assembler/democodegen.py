@@ -34,31 +34,14 @@ class DemoCodeGenerator(object):
 	#		Do a binary operation on a constant or variable on the accumulator
 	#
 	def binaryOperation(self,operator,isConstant,value):
-		if operator == "!" or operator == "?":
-			self.binaryOperation("+",isConstant,value)
-			print("${0:06x}  lda.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))			
-			self.pc += 1
-		else:
-			src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
-			print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
-			self.pc += 1
+		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
+		print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
+		self.pc += 1
 	#
 	#		Store direct
 	#
 	def storeDirect(self,value):
 		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
-		self.pc += 1
-	#
-	#		Copy A to index, A indeterminate.
-	#
-	def transferIndex(self):
-		print("${0:06x}  tax".format(self.pc))
-		self.pc += 1
-	#
-	#		Store indirect
-	#
-	def storeIndirect(self,operator):
-		print("${0:06x}  sta.{1} [x]".format(self.pc,"b" if operator == "?" else "w"))
 		self.pc += 1
 	#
 	#		Allocate space for n variables. Must be a continuous block.

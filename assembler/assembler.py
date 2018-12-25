@@ -12,6 +12,7 @@
 from error import *
 from dictionary import *
 from democodegen import *
+from instruction import *
 import re
 
 # ***************************************************************************************
@@ -41,14 +42,23 @@ class Assembler(object):
 			if source[pos].startswith("proc"):									# found a proc
 				self.dictionary.removeLocals()									# remove locals
 				self.processDefinition(source[pos][4:].strip())					# process identifier and parameters
-				print(">>>",line,source[pos][4:].strip(),":::",source[pos+1])
-				line = line + source[pos+1].count("~")							# advance line number
+				instr = InstructionHandler(self.dictionary,self.codeGenerator,self.stringConstants)
+				instr.complete()
+				for l in [x.strip() for x in source[pos+1].split(":")]:			# work all through the isntructions
+					if l == "~":												# new line in source marker
+						line += 1
+						AssemblerException.LINENUMBER = line
+					else:														# otherwise assemble new line.
+						if l != "":
+							instr.assemble(l)
+				instr.complete()
 				pos = pos + 2 													# one for proc one for body
 			else:
 				if  re.match("^[\~\s\:]*$",source[pos]) is None:				# only spaces, : and ~
 					raise AssemblerException("Code outside proc definition")
 				line = line+source[pos].count("~") 								# advance line position
 				pos = pos + 1
+		self.dictionary.removeLocals()											# remove all locals.
 	#
 	#		Remove comment, edge spaces and tabs
 	#
@@ -98,8 +108,8 @@ if __name__ == "__main__":
 //
 proc code.boot()
 	0>$total
-	1>$count "hello world">d
-	$count>c[4] "bad
+	1>$count:"hello world">d
+	$count>c[4]:"bad>testV
 	c[5]+4>c[9]
 endproc
 
