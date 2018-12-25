@@ -10,6 +10,7 @@
 # ***************************************************************************************
 
 from error import *
+from dictionary import *
 from democodegen import *
 import re
 
@@ -19,8 +20,9 @@ import re
 
 class Assembler(object):
 	def __init__(self,codeGenerator):
-		self.codeGenerator = codeGenerator
-		self.rxIdentifier = "\$?[a-z\_][a-z0-9\_\:\.]*"
+		self.codeGenerator = codeGenerator 										# save codegen
+		self.dictionary = Dictionary() 											# create a dictionary
+		self.rxIdentifier = "\$?[a-z\_][a-z0-9\_\:\.]*" 						# RegEx for an identifier.
 	#
 	#		Assemble a list of strings.
 	#
@@ -30,8 +32,19 @@ class Assembler(object):
 		source = ":~:".join(source)												# make a long string with line count marks
 		rx = "(proc\s+"+self.rxIdentifier+"\(.*?\))"							# definition rx - proc(<ident>)(paramstuff)
 		source = re.split(rx,source) 											# split by proc 
-
-		print("\n".join(source))
+		line = 1 																# line number
+		pos = 0																	# position in source list
+		while pos < len(source):												# work through the whole lot.
+			if source[pos].startswith("proc"):									# found a proc
+				print(">>>",line,source[pos][4:].strip(),":::",source[pos+1])
+				line = line + source[pos+1].count("~")							# advance line number
+				pos = pos + 2 													# one for proc one for body
+			else:
+				if  re.match("^[\~\s\:]*$",source[pos]) is None:				# only spaces, : and ~
+					AssemblerException.LINENUMBER = line 						# code forbidden outside proc.
+					raise AssemblerException("Code outside proc definition")
+				line = line+source[pos].count("~") 								# advance line position
+				pos = pos + 1
 	#
 	#		Remove comment, edge spaces and tabs
 	#
@@ -40,7 +53,7 @@ class Assembler(object):
 		source = [x.replace("\t"," ").strip() for x in source]					# Remove tabs and edge spaces
 		return source
 	#
-	#		Remove quoted strings.
+	#		Remove quoted strings, replace with ID numbers, save for later.
 	#
 	def removeStrings(self,source):
 		rxString = re.compile("(\".*?\")")										# Rips out string constants

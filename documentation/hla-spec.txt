@@ -30,11 +30,7 @@ end of module non global procedures are deleted from the dictionary.
 Processing
 ==========
 
-Comments out, tabs out, space stripping
-Remove all quoted strings.
-Joined by ~ and :
-Split into procedures (at proc <identifier>) and process seperately. No code before first proc, or between !
-- scan for globals (including old ones) and locals 
+TODO:
+- scan for globals (including old ones) and locals ><ident>
+- check for 'x' ?
 - process each instruction once at a time.
-
-identifiers [a-z_$][a-z0-9_:.]
