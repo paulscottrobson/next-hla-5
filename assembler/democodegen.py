@@ -24,6 +24,11 @@ class DemoCodeGenerator(object):
 	def getAddress(self):
 		return self.pc
 	#
+	#		Get word size
+	#
+	def getWordSize(self):
+		return 2
+	#
 	#		Load a constant or variable into the accumulator.
 	#
 	def loadDirect(self,isConstant,value):
@@ -52,13 +57,13 @@ class DemoCodeGenerator(object):
 		print("${0:06x}  dw    {1}".format(addr,",".join(["$0000"]*count)))
 		return addr
 	#
-	#		Load A with address of string constant
+	#		Create a string constant (done outside procedures)
 	#
-	def loadStringConstant(self,string):
+	def createStringConstant(self,string):
 		sAddr = self.pc
 		print("${0:06x}  db    \"{1}\",0".format(self.pc,string))
 		self.pc += len(string)+1
-		self.loadDirect(True,sAddr)
+		return sAddr
 	#
 	#		Call a subroutine
 	#

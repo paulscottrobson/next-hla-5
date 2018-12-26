@@ -3,7 +3,7 @@
 #
 #		Name : 		assembler.py
 #		Author :	Paul Robson (paul@robsons.org.uk)
-#		Date : 		24th December 2018
+#		Date : 		26th December 2018
 #		Purpose :	Assembler Class
 #
 # ***************************************************************************************
@@ -25,7 +25,7 @@ class Assembler(object):
 		self.dictionary = Dictionary() 											# create a dictionary
 		self.rxIdentifier = "\$?[a-z\_][a-z0-9\_\.]*" 							# RegEx for an identifier.
 		self.rxcIdentifier = re.compile("^"+self.rxIdentifier+"$")				# Compiled identifier test
-		self.keywords = {}
+		self.keywords = {}														# keyword hash.
 		for kw in "endproc,if,while,for,endwhile,endfor,endif".split(","):
 			self.keywords[kw] = kw
 	#
@@ -33,29 +33,10 @@ class Assembler(object):
 	#
 	def assemble(self,source):
 		source = self.preProcess(source)										# comments, tabs etc.
-		source = self.removeStrings(source)										# remove strings.
-		source = ":~:".join(source)												# make a long string with line count marks
-		source = source.lower()													# everything now lower case
-		rx = "(proc\s+"+self.rxIdentifier+"\(.*?\))"							# definition rx - proc(<ident>)(paramstuff)
-		source = re.split(rx,source) 											# split by proc 
-		line = 1 																# line number
-		pos = 0																	# position in source list
-		while pos < len(source):												# work through the whole lot.
-			AssemblerException.LINENUMBER = line 								# code forbidden outside proc.
-			if source[pos].startswith("proc"):									# found a proc
-				self.dictionary.removeLocals()									# remove locals
-				self.processDefinition(source[pos][4:].strip())					# process identifier and parameters
-				self.discoverLocals(source[pos+1])								# find new locals.
-				source[pos+1] = self.replaceVariables(source[pos+1]) 			# replace variables in source.
-				source[pos+1] = source[pos+1].replace(" ","")					# remove all spaces now.
-				print(source[pos+1])
-				pos = pos + 2 													# one for proc one for body
-			else:
-				if  re.match("^[\~\s\:]*$",source[pos]) is None:				# only spaces, : and ~
-					raise AssemblerException("Code outside proc definition")
-				line = line+source[pos].count("~") 								# advance line position
-				pos = pos + 1
-		self.dictionary.removeLocals()											# remove all locals.
+		source = self.assembleStringConstants(source)							# assemble and replace string constants
+		procedures = self.joinAndSplit(source)									# convert into seperate procedure chunks
+		for proc in procedures:													# assemble them all.
+			self.assembleProcedure(proc)					
 	#
 	#		Remove comment, edge spaces and tabs
 	#
@@ -64,93 +45,138 @@ class Assembler(object):
 		source = [x.replace("\t"," ").strip() for x in source]					# Remove tabs and edge spaces
 		return source
 	#
-	#		Remove quoted strings, replace with ID numbers, save for later.
-	#
-	def removeStrings(self,source):
-		rxString = re.compile("(\".*?\")")										# Rips out string constants
-		self.stringConstants = []												# known string constants
 		for i in range(0,len(source)):											# scan lines
-			if source[i].find('"') >= 0:										# if quote mark in lines
-				line = rxString.split(source[i])								# split up by "(.*?)"
-				for j in range(0,len(line)):									# look at each part
-					if line[j].startswith('"'):									# if a quoted string
-						id = len(self.stringConstants)							# this is the string id#
-						self.stringConstants.append(line[j][1:-1])				# add to the list of string constants
-						line[j] = '"'+str(id)									# and replace the string with a ref to it
-				source[i] = "".join(line)										# put line back together
+	#		Scan for quoted strings. Compile them and replace by addreses.
+	#
+	def assembleStringConstants(self,source):
+		rxString = re.compile("(\".*?\")")										# dividing regext.
+		for i in range(0,len(source)):											# each line of source
+			if source[i].find('"') >= 0:										# if it has at least one quote mark.
+				parts = rxString.split(source[i])								# divide it up.
+				#print(source[i],parts)
+				for pn in range(0,len(parts)):									# look for string constants in there
+					ps = parts[pn]
+					if len(ps) >= 2 and ps[0] == '"' and ps[-1] == '"':			# if its a string constant replace it
+						addr = self.codeGenerator.createStringConstant(ps[1:-1])# with the constant which is the address
+						parts[pn] = str(addr)									# of the string in memory.
+				source[i] = "".join(parts)										# put command back together.
 		return source
 	#
-	#		Process procedure definition header. Strip off name, validate the parameters, allocate
-	#		space for the static parameters and add definitions for the procedure and the parameters.
+	#		Glue the parts together with line markers, removing spaces, subdivide into procedures.
 	#
-	def processDefinition(self,header):
-		m = re.match("^("+self.rxIdentifier+")\((.*)\)$",header)				# check it's okay
-		assert m is not None
-		params = [x.strip() for x in m.group(2).split(",") if x != ""] 			# get the parameters
-		procDef = { "name":m.group(1),"type":"p","value":self.codeGenerator.getAddress() }
-		procDef["paramcount"] = len(params)										# add parameter information
-		if len(params) > 0:
-			paramAddr = self.codeGenerator.allocSpace(len(params))				# add parameter static space
-			procDef["paramaddr"] = paramAddr
-			for p in range(0,len(params)):										# validate the parameters, add if okay
-				if self.rxcIdentifier.match(params[p]) is None:
-					raise AssemblerException("Bad parameter "+params[p])						
-				self.dictionary.add({"name":params[p],"type":"v","value":paramAddr+p*2})
-		self.dictionary.add(procDef)											# add the definition
+	def joinAndSplit(self,source):
+		source = ":~:".join(source)												# one long string.
+		source = source.replace(" ","").lower()									# remove all spaces, make l/c
+		procedures = []
+		parts = re.split("(proc"+self.rxIdentifier+"\(.*?\))",source)			# split around definition.
+		line = 1 																# starting line #															
+		section = 0																# work through.
+		while section < len(parts):
+			AssemblerException.LINENUMBER = line
+			if parts[section].startswith("proc"):								# is it a procedure ?
+				procedures.append(self.createProcedureRecord(parts[section],parts[section+1],line))
+				line = line + parts[section+1].count("~")						# make line position correct
+				section += 2 													# procedure and body
+			else:	 															# should be empty space.
+				linesInGap = parts[section].count("~")							# this many lines in empty space
+				if parts[section].replace(":","").replace("~","") != "":		# check only ~ and : in there
+					raise AssemblerException("Code out of procedure")
+				line = line + linesInGap
+				section += 1
+		return procedures
 	#
-	#		Discover new local definitions in this procedure
+	#		Create a hash which has all the information about the procedure - name, parameters, body and
+	#		position in source code.
 	#
-	def discoverLocals(self,source):
-		regex = "(\>\s*"+self.rxIdentifier+"\s*\[?)"							# gets >ident and [ if there is one.]
-		parts = [x for x in re.split(regex,source) if x.startswith(">")]		# rip out all the >ident
-		parts = [x[1:].strip() for x in parts if not x.endswith("[")]			# that don't end in [ e.g. >x[4]
-		for p in parts: 														# work through them all
-			if not self.dictionary.find(p):										# add any new ones.
-				self.dictionary.add({"name":p,"type":"v","value":self.codeGenerator.allocSpace(1)})
+	def createProcedureRecord(self,header,body,startLine):
+		procdef = { "line":startLine,"body":body }								# build procedure definition.
+		m = re.match("^proc("+self.rxIdentifier+")\((.*?)\)$",header)			# analyse the header			
+		assert m is not None 													# internal error.
+		procdef["name"] = m.group(1)											# get name and parameters.
+		procdef["parameters"] = [x for x in m.group(2).split(",") if x != ""]
+		procdef["paramcount"] = len(procdef["parameters"])
+		for p in procdef["parameters"]:											# validate the parameters
+			if self.rxcIdentifier.match(p) is None:								# as legal identifiers.
+				raise AssemblerException("Bad parameter")
+		return procdef
 	#
-	#		Replace variables with @address. Only identifiers remaining now are procedures which are
-	#		done at compile time.
+	#		Assemble a procedure
 	#
-	def replaceVariables(self,source):
-		regex = re.compile("("+self.rxIdentifier+"\s*\(?)")						# pick out identifiers, can detect proc calls 
-		source = regex.split(source) 											# split up by parts.
-		for i in range(0,len(source)):											# look through parts
-			if regex.match(source[i]) is not None:	 							# check is an identifier
-				if source[i][-1] != "(":										# and not a procedure invocation
-					name = source[i].strip()									# get the identifier bit.
-					if name not in self.keywords:								# and not a keyword
-						info = self.dictionary.find(name)						# find it.					
-						if info is None or info["type"] != "v":
-							raise AssemblerException("identifier not known "+source[i])
-						source[i] = "@"+str(info["value"])						# replace with address marker.				
-		return "".join(source)
+	def assembleProcedure(self,procDef):
+		AssemblerException.LINENUMBER = procDef["line"]							# cover errors before code generation
+		self.extractIdentifiers(procDef["body"],procDef["parameters"])			# identify new identifiers, allocate memory
+		procDef["body"] = self.replaceIdentifiers(procDef["body"])				# replace all variable identifiers. All that's
+																				# left is keywords and procedure names.
+
+		procDef["type"] = "p" 													# make the procedure def into dictionary record
+		procDef["value"] = self.codeGenerator.getAddress()
+		if procDef["paramcount"] > 0: 											# param address is that of first param
+			procDef["paramaddress"] = self.locals[procDef["parameters"][0]]
+		self.dictionary.add(procDef)											# add to global dictionary.
+		print(procDef)
+		print(self.locals)
+
+	#
+	#		Extract identifiers, locals and globals, that are assigned to.
+	#
+	def extractIdentifiers(self,body,parameters):
+		self.locals = {} 														# first locals are parameters
+		if len(parameters) != 0:
+			paramMemory = self.codeGenerator.allocSpace(len(parameters))		# parameter memory contiguous
+			for i in range(0,len(parameters)):
+				self.locals[parameters[i]] = paramMemory + i * self.codeGenerator.getWordSize()
+		assign = re.split("(\:"+self.rxIdentifier+"\=)",body)					# split out any assignments
+		assign = [x[1:-1] for x in assign if x.startswith(":") and x.endswith("=")]
+		for var in assign:
+			if var.startswith("$"):												# is it a global
+				self.dictionary.add({"name":var,"type":"v","value":self.codeGenerator.allocSpace(1)})
+			else:
+				if var not in self.locals:										# if not already defined.
+					self.locals[var] = self.codeGenerator.allocSpace(1)			# add to the locals list.
+	#
+	#		Replace all identifiers except procedure calls and keywords with address references.
+	#
+	def replaceIdentifiers(self,body):
+		parts = re.split("("+self.rxIdentifier+"\(?)",body)						# split on identifier, with ( if present
+		for i in range(0,len(parts)): 											# work through them
+			if self.rxcIdentifier.match(parts[i]) is not None:					# match occurs, not proc calls.
+				if parts[i] not in self.keywords:								# not a keyword
+					if parts[i] in self.locals:									# is it a local ?
+						parts[i] = "@"+str(self.locals[parts[i]]) 				# replace that.
+					else:
+						info = self.dictionary.find(parts[i])					# else check the dictionary
+						if info is None or info["type"] != "v":					# can't find/not variable.
+							raise AssemblerException("Cannot find identifier "+parts[i])
+						parts[i] = "@"+str(info["value"])						# replace it.
+		return "".join(parts)
 
 if __name__ == "__main__":
 	code = """
 //
-//				Empty comment lines.
+//		A comment
 //
-proc code.boot()
-	1>c
-	0 > $total
-	1>$count:"hello world">d
-	$count>c[4]:"bad">testV
-	c[5]+4>c[9]
+proc param0()
 endproc
 
-proc $print(n)
-	"anumber" >$screen
-endproc	
-proc pr1.test(a,b,c):b=a+c:endproc		// here's a comment
-proc pr2.loop(x)
-0>z
-z=x
-while x#0
-	print(x)
-	x-1>x
-	$total+1->$total
-endwhile
-pr1.test(x,z,42)
+proc param2(red,green)
+	$count = red+green
+endproc
+
+proc code.boot(a,b,c)
+	a = $count
+	a?1 = 1
+	a!2 = 2+a
+	a?b = 3+b*c
+	a!c = 4?b
+	if (a=0)
+		c=c+1
+	endif
+	while (a<0)
+		c = c + 1
+	endwhile
+	for (42)
+		c = c + 1
+	endfor
 endproc
 
 """.split("\n")

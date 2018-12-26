@@ -11,6 +11,28 @@
 
 from error import *
 
+class Identifier(object):
+	def __init__(self,name,value):
+		self.name = name.strip().lower()
+		self.value = value
+	def getName(self):
+		return self.name
+	def getValue(self):
+		return self.value
+
+class VariableIdentifier(Identifier):
+	pass
+
+class ProcedureIdentifier(Identifier):
+	def __init__(self,name,value,paramBase,paramCount):
+		VariableIdentifier.__init__(self,name,value)
+		self.paramBase = paramBase
+		self.paramCount = paramCount
+	def getParameterBase(self):
+		return self.paramBase
+	def getParameterCount(self):
+		return self.paramCount
+
 class Dictionary(object):
 	def __init__(self):
 		self.identifiers = {}
@@ -29,12 +51,3 @@ class Dictionary(object):
 	def find(self,key):
 		key = key.strip().lower()
 		return self.identifiers[key] if key in self.identifiers else None
-	#
-	#		Delete all locals
-	#
-	def removeLocals(self):
-		idents = self.identifiers
-		self.identifiers = {}
-		for k in idents.keys():
-			if k[0] == '$':
-				self.identifiers[k] = idents[k]
