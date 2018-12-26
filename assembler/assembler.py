@@ -114,7 +114,8 @@ class Assembler(object):
 			paramBase = self.locals[procDef["parameters"][0]]
 		procAddress = self.codeGenerator.getAddress()							# get execution address
 
-		ihandler = InstructionHandler(self.dictionary,self.codeGenerator)		# this is the code generator
+																				# this is the code generator
+		ihandler = InstructionHandler(self.dictionary,self.codeGenerator,self.rxIdentifier)		
 		for cmd in body.split(":"):												# assemble every element
 			if cmd == "~":														# new line marker.
 				AssemblerException.LINENUMBER += 1
@@ -187,6 +188,8 @@ proc code.boot(a,b,c)
 	for (42)
 		c = c + 1
 	endfor
+	param2(a,2)
+	param0()
 endproc
 
 """.split("\n")

@@ -56,16 +56,16 @@ class DemoCodeGenerator(object):
 		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
 		self.pc += 1
 	#
-	#		Transfer A to save index register for use later, A out doesn't matter
+	#		Copy A to temporary register
 	#
-	def transferIndex(self):
-		print("${0:06x}  tax".format(self.pc))
+	def copyResultToTemp(self):
+		print("${0:06x}  tab".format(self.pc))
 		self.pc += 1
 	#
-	#		Store A via the index register.
+	#		Store B indirect via the A register
 	#		
 	def storeIndirect(self,operator):
-		print("${0:06x}  sta.{1} [x]".format(self.pc,"b" if operator == "?" else "w"))
+		print("${0:06x}  stb.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))
 		self.pc += 1
 	#
 	#		Allocate space for n variables. Must be a continuous block.
