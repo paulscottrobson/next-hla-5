@@ -11,12 +11,14 @@
 
 # ***************************************************************************************
 #					This is a code generator for an idealised CPU
+#
+#	Note: strings and unallocated data space can all use the same space as the code as
+#	they are all allocated outside procedure code generation.
 # ***************************************************************************************
 
 class DemoCodeGenerator(object):
 	def __init__(self):
 		self.pc = 0x1000
-		self.vars = 0x2000
 		self.ops = { "+":"add","-":"sub","*":"mul","/":"div","%":"mod","&":"and","|":"ora","^":"xor" }
 	#
 	#		Get current address
@@ -39,9 +41,14 @@ class DemoCodeGenerator(object):
 	#		Do a binary operation on a constant or variable on the accumulator
 	#
 	def binaryOperation(self,operator,isConstant,value):
-		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
-		print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
-		self.pc += 1
+		if operator == "!" or operator == "?":
+			self.binaryOperation("+",isConstant,value)
+			print("${0:06x}  lda.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))
+			self.pc += 1
+		else:
+			src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
+			print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
+			self.pc += 1
 	#
 	#		Store direct
 	#
@@ -49,11 +56,23 @@ class DemoCodeGenerator(object):
 		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
 		self.pc += 1
 	#
+	#		Transfer A to save index register for use later, A out doesn't matter
+	#
+	def transferIndex(self):
+		print("${0:06x}  tax".format(self.pc))
+		self.pc += 1
+	#
+	#		Store A via the index register.
+	#		
+	def storeIndirect(self,operator):
+		print("${0:06x}  sta.{1} [x]".format(self.pc,"b" if operator == "?" else "w"))
+		self.pc += 1
+	#
 	#		Allocate space for n variables. Must be a continuous block.
 	#
 	def allocSpace(self,count):
-		addr = self.vars
-		self.vars += (2 * count)
+		addr = self.pc
+		self.pc += (2 * count)
 		print("${0:06x}  dw    {1}".format(addr,",".join(["$0000"]*count)))
 		return addr
 	#
@@ -96,9 +115,8 @@ if __name__ == "__main__":
 	cg.allocSpace(4)
 	cg.allocSpace(1)	
 	print("------------------")
-	cg.loadStringConstant("Hello world!")
+	cg.createStringConstant("Hello world!")
 	print("------------------")
 	cg.callSubroutine(42)
 	cg.returnSubroutine()
 	print("------------------")
-

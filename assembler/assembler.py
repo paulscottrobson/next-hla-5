@@ -110,17 +110,21 @@ class Assembler(object):
 
 		paramCount = len(procDef["parameters"])									# get count of params and base address
 		paramBase = 0
-		if paramCount > 0:																				
+		if paramCount > 0:														# get address of first parameter.							
 			paramBase = self.locals[procDef["parameters"][0]]
 		procAddress = self.codeGenerator.getAddress()							# get execution address
 
-		# TODO : Assemble body
+		ihandler = InstructionHandler(self.dictionary,self.codeGenerator)		# this is the code generator
+		for cmd in body.split(":"):												# assemble every element
+			if cmd == "~":														# new line marker.
+				AssemblerException.LINENUMBER += 1
+			else:
+				if cmd != "":													# instruction if present
+					ihandler.assemble(cmd)
+		ihandler.complete()														# finished, check structures closed.
+
 																				# add definition after can't recurse
 		self.dictionary.add(ProcedureIdentifier(procDef["name"],procAddress,paramBase,paramCount))
-
-		print(body)
-		print(self.locals)
-
 	#
 	#		Extract identifiers, locals and globals, that are assigned to.
 	#
@@ -130,6 +134,7 @@ class Assembler(object):
 			paramMemory = self.codeGenerator.allocSpace(len(parameters))		# parameter memory contiguous
 			for i in range(0,len(parameters)):
 				self.locals[parameters[i]] = paramMemory + i * self.codeGenerator.getWordSize()
+
 		assign = re.split("(\:"+self.rxIdentifier+"\=)",body)					# split out any assignments
 		assign = [x[1:-1] for x in assign if x.startswith(":") and x.endswith("=")]
 		for var in assign:
@@ -170,12 +175,11 @@ endproc
 
 proc code.boot(a,b,c)
 	a = $count
-	a?1 = 1
-	a!2 = 2+a
+	a?1 = 1 : a!2 = 2+a
 	a?b = 3+b*c
 	a!c = 4?b
 	if (a=0)
-		c=c+1
+		c=c+"fred"
 	endif
 	while (a<0)
 		c = c + 1
