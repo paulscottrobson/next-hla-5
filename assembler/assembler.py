@@ -45,7 +45,6 @@ class Assembler(object):
 		source = [x.replace("\t"," ").strip() for x in source]					# Remove tabs and edge spaces
 		return source
 	#
-		for i in range(0,len(source)):											# scan lines
 	#		Scan for quoted strings. Compile them and replace by addreses.
 	#
 	def assembleStringConstants(self,source):
@@ -104,16 +103,22 @@ class Assembler(object):
 	#
 	def assembleProcedure(self,procDef):
 		AssemblerException.LINENUMBER = procDef["line"]							# cover errors before code generation
-		self.extractIdentifiers(procDef["body"],procDef["parameters"])			# identify new identifiers, allocate memory
-		procDef["body"] = self.replaceIdentifiers(procDef["body"])				# replace all variable identifiers. All that's
+		body = procDef["body"]
+		self.extractIdentifiers(body,procDef["parameters"])						# identify new identifiers, allocate memory
+		body = self.replaceIdentifiers(body)									# replace all variable identifiers. All that's
 																				# left is keywords and procedure names.
 
-		procDef["type"] = "p" 													# make the procedure def into dictionary record
-		procDef["value"] = self.codeGenerator.getAddress()
-		if procDef["paramcount"] > 0: 											# param address is that of first param
-			procDef["paramaddress"] = self.locals[procDef["parameters"][0]]
-		self.dictionary.add(procDef)											# add to global dictionary.
-		print(procDef)
+		paramCount = len(procDef["parameters"])									# get count of params and base address
+		paramBase = 0
+		if paramCount > 0:																				
+			paramBase = self.locals[procDef["parameters"][0]]
+		procAddress = self.codeGenerator.getAddress()							# get execution address
+
+		# TODO : Assemble body
+																				# add definition after can't recurse
+		self.dictionary.add(ProcedureIdentifier(procDef["name"],procAddress,paramBase,paramCount))
+
+		print(body)
 		print(self.locals)
 
 	#
@@ -129,7 +134,8 @@ class Assembler(object):
 		assign = [x[1:-1] for x in assign if x.startswith(":") and x.endswith("=")]
 		for var in assign:
 			if var.startswith("$"):												# is it a global
-				self.dictionary.add({"name":var,"type":"v","value":self.codeGenerator.allocSpace(1)})
+				newvar = VariableIdentifier(var,self.codeGenerator.allocSpace(1))
+				self.dictionary.add(newvar)
 			else:
 				if var not in self.locals:										# if not already defined.
 					self.locals[var] = self.codeGenerator.allocSpace(1)			# add to the locals list.
@@ -145,9 +151,9 @@ class Assembler(object):
 						parts[i] = "@"+str(self.locals[parts[i]]) 				# replace that.
 					else:
 						info = self.dictionary.find(parts[i])					# else check the dictionary
-						if info is None or info["type"] != "v":					# can't find/not variable.
+						if info is None or not isinstance(info,VariableIdentifier):	# can't find/not variable.
 							raise AssemblerException("Cannot find identifier "+parts[i])
-						parts[i] = "@"+str(info["value"])						# replace it.
+						parts[i] = "@"+str(info.getValue())						# replace it.
 		return "".join(parts)
 
 if __name__ == "__main__":
