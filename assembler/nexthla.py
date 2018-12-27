@@ -193,19 +193,24 @@ class Assembler(object):
 	#		Assemble code for if/while structure. While is an If which loops to the test :)
 	#
 	def startIfWhile(self,line):
-		print(line)
-		m = re.match("^(while|if)\((.*)([\#\=\>])0\)$",line)					# decode it.
+		m = re.match("^(while|if)\((.*)([\#\=\<])0\)$",line)					# decode it.
 		if m is None:															# couldn't
 			raise AssemblerException("Structure syntax error")
 		info = [ m.group(1), self.codeGen.getAddress() ]						# structure, loop address
 		test = { "#":"z","=":"nz","<":"p" }[m.group(3)]							# this is the *fail* test
 		info.append(test)
+		self.processExpression(m.group(2))										# do the expression part
+		info.append(self.codeGen.getAddress())									# struct,loop,toptest,testaddr
 		self.codeGen.jumpInstruction(test,0)									# jump to afterwards on fail.
-		info.append(self.codeGen.getAddress())
-		print(line,m.groups())
+		self.structureStack.append(info)										# put on stack
 
 	def endIfWhile(self,line):
-		pass
+		info = self.structureStack.pop()										# get top structure.
+		if "end"+info[0] != line:												# is it not matching ?
+			raise AssemblerException("Structure imbalance")
+		if line == "endwhile":													# if while loop back before test.
+			self.codeGen.jumpInstruction("",info[1])
+		self.codeGen.jumpInstruction(info[2],self.codeGen.getAddress(),info[3])	# overwrite the jump.
 	#
 	#		Assemble code for for/endfor
 	#
