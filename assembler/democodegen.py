@@ -33,48 +33,50 @@ class DemoCodeGenerator(object):
 	#
 	#		Load a constant or variable into the accumulator.
 	#
-	def loadDirect(self,isConstant,value):
+	def _loadDirect(self,isConstant,value):
 		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
 		print("${0:06x}  lda   {1}".format(self.pc,src))
 		self.pc += 1
 	#
 	#		Do a binary operation on a constant or variable on the accumulator
 	#
-	def binaryOperation(self,operator,isConstant,value):
-		if operator == "!" or operator == "?":
-			self.binaryOperation("+",isConstant,value)
-			print("${0:06x}  lda.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))
-			self.pc += 1
-		else:
-			src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
-			print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
-			self.pc += 1
+	def _binaryOperation(self,operator,isConstant,value):
+		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
+		print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
+		self.pc += 1
 	#
 	#		Store direct
 	#
-	def storeDirect(self,value):
+	def _storeDirect(self,value):
 		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
 		self.pc += 1
 	#
 	#		Copy A to temporary register
 	#
-	def copyResultToTemp(self):
+	def _copyResultToTemp(self):
 		print("${0:06x}  tab".format(self.pc))
 		self.pc += 1
 	#
 	#		Store B indirect via the A register
 	#		
-	def storeIndirect(self,operator):
+	def _storeIndirect(self,operator):
 		print("${0:06x}  stb.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))
 		self.pc += 1
 	#
-	#		Allocate space for n variables. Must be a continuous block.
+	#		Allocate count bytes of meory, default is word size
 	#
-	def allocSpace(self,count):
+	def allocSpace(self,count = None):
 		addr = self.pc
-		self.pc += (2 * count)
-		print("${0:06x}  dw    {1}".format(addr,",".join(["$0000"]*count)))
+		count = self.getWordSize() if count is None else count
+		self.pc += count
+		print("${0:06x}  ds    ${1:04x}".format(addr,count))
 		return addr
+	#
+	#		Copy parameter to a temporary area
+	#
+	def storeParamRegister(self,regNumber,address):
+		print("${0:06x}  str   r{1},(${2:04x})".format(self.pc,regNumber,address))
+		self.pc += 1
 	#
 	#		Create a string constant (done outside procedures)
 	#
