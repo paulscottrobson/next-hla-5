@@ -193,20 +193,75 @@ class Assembler(object):
 	#		Assemble code for if/while structure. While is an If which loops to the test :)
 	#
 	def startIfWhile(self,line):
-		pass
+		print(line)
+		m = re.match("^(while|if)\((.*)([\#\=\>])0\)$",line)					# decode it.
+		if m is None:															# couldn't
+			raise AssemblerException("Structure syntax error")
+		info = [ m.group(1), self.codeGen.getAddress() ]						# structure, loop address
+		test = { "#":"z","=":"nz","<":"p" }[m.group(3)]							# this is the *fail* test
+		info.append(test)
+		self.codeGen.jumpInstruction(test,0)									# jump to afterwards on fail.
+		info.append(self.codeGen.getAddress())
+		print(line,m.groups())
+
 	def endIfWhile(self,line):
 		pass
 	#
 	#		Assemble code for for/endfor
 	#
 	def startFor(self,line):
-		pass
+		m = re.match("^for\((.*)\)$",line)										# split it up
+		if m is None:															# check format.
+			raise AssemblerException("Poorly formatted for")
+		self.processExpression(m.group(1))										# compile the loop count value
+		self.structureStack.append(["for",self.codeGen.getAddress()])			# push on the stack.
+		self.codeGen.forCode()													# generate the for code.
+		if "index" in self.dictionary:											# save index if it exists
+			self.codeGen.storeDirect(self.dictionary["index"])
+	#
 	def endFor(self,line):
-		pass
+		info = self.structureStack.pop()										# get the element off the stack
+		if info[0] != "for":													# check it is correct.
+			raise AssemblerException("endfor without for")
+		self.codeGen.endForCode(info[1])										# generate code for endfor/next
 	#
 	#		Convert an expression into code.
 	#
 	def processExpression(self,line):
 		line = [x for x in re.split("([\+\-\*\/\%\&\|\^\>])",line) if x != ""]	# split into terms and operators.
-		print(line)
+		if len(line) % 2 == 0:													# must be n+1 terms, n operators
+			raise AssemblerException("Syntax Error")
+		operators = "+-*/&|^>"													# operators.
+		firstTerm = self.parseTerm(line[0],True)								# first term, which can be extended
+		self.codeGen.loadDirect(firstTerm[0],firstTerm[1])						# first part
+		if len(firstTerm) > 2:													# first term indexed ?
+			self.codeGen.binaryOperation("+",firstTerm[2],firstTerm[3])			# calculate the address
+			self.codeGen.loadIndirect()
+		for p in range(1,len(line),2):
+			if line[p] == '>':													# assignment special case.
+				target = self.parseTerm(line[p+1],True)							# term can be indirection type.
+				if len(target) == 2:											# store to a specific address
+					if target[0]:												# must be a variable
+						raise AssemblerException("Cannot store to a constant")
+					self.codeGen.storeDirect(int(target[1]))
+				else:															# indirect store.
+					self.codeGen.storeIndirect(target[1],target[2],target[3])
+			else:																# all other operators
+				nextTerm = self.parseTerm(line[p+1],False)
+				self.codeGen.binaryOperation(line[p],nextTerm[0],nextTerm[1])
+	#
+	#		Parse a term from text. If can be @var or a number. If extended is true, it
+	#		can also be @var[@var] or @var[@number]
+	#
+	def parseTerm(self,term,extended):
+		if extended:															# can parse out @nnn[<@>nnn] ?
+			m = re.match("^\@(\d+)\[(\@?)(\d+)\]$",term)						# if so try
+			if m is not None:													# and if match return that.
+				return [False,int(m.group(1)),m.group(2) == "",int(m.group(3))]
+
+		m = re.match("^(\@?)(\d+)$",term)										# otherwise just <@>nnn
+		if m is None:
+			raise AssemblerException("Bad term "+term)
+		return [m.group(1) == "",int(m.group(2))]
+		print(term,m.groups() if m is not None else None)		
 

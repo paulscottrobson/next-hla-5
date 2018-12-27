@@ -33,35 +33,62 @@ class DemoCodeGenerator(object):
 	#
 	#		Load a constant or variable into the accumulator.
 	#
-	def _loadDirect(self,isConstant,value):
+	def loadDirect(self,isConstant,value):
 		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
 		print("${0:06x}  lda   {1}".format(self.pc,src))
 		self.pc += 1
 	#
+	#		Load indirect via A
+	#
+	def loadIndirect(self):
+		print("${0:06x}  lda   [a]".format(self.pc))
+		self.pc += 1
+	#
 	#		Do a binary operation on a constant or variable on the accumulator
 	#
-	def _binaryOperation(self,operator,isConstant,value):
+	def binaryOperation(self,operator,isConstant,value):
 		src = ("#${0:04x}" if isConstant else "(${0:04x})").format(value)
 		print("${0:06x}  {1}   {2}".format(self.pc,self.ops[operator],src))
 		self.pc += 1
 	#
 	#		Store direct
 	#
-	def _storeDirect(self,value):
+	def storeDirect(self,value):
 		print("${0:06x}  sta   (${1:04x})".format(self.pc,value))
 		self.pc += 1
 	#
-	#		Copy A to temporary register
-	#
-	def _copyResultToTemp(self):
+	#		Store B indirect to address [variable] + offset/[offset]
+	#		
+	def storeIndirect(self,baseVariable,offsetIsConstant,offset):
 		print("${0:06x}  tab".format(self.pc))
 		self.pc += 1
-	#
-	#		Store B indirect via the A register
-	#		
-	def _storeIndirect(self,operator):
-		print("${0:06x}  stb.{1} [a]".format(self.pc,"b" if operator == "?" else "w"))
+		self.loadDirect(False,baseVariable)
+		self.binaryOperation("+",offsetIsConstant,offset)
+		print("${0:06x}  stb  [a]".format(self.pc))
 		self.pc += 1
+	#
+	#		Generate for code.
+	#
+	def forCode(self):
+		print("${0:06x}  dec   a".format(self.pc))
+		print("${0:06x}  push  a".format(self.pc+1))
+		self.pc += 2
+	#
+	#		Gemerate endfor code.
+	#
+	def endForCode(self,loopAddress):
+		print("${0:06x}  pop   a".format(self.pc))
+		self.pc += 1
+		self.jumpInstruction("nz",loopAddress)
+	#
+	#	Compile a loop instruction. Test are z, nz, p or "" (unconditional). The compilation
+	#	address can be overridden to patch forward jumps.
+	#
+	def jumpInstruction(self,test,target,override = None):
+		if override is None:
+			override = self.pc
+			self.pc += 1
+		print("${0:06x}  jmp   {1}${2:06x}".format(override,test+"," if test != "" else "",target))
 	#
 	#		Allocate count bytes of meory, default is word size
 	#
