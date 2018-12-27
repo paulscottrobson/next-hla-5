@@ -188,7 +188,16 @@ class Assembler(object):
 	#		Assemble a procedure invocation
 	#
 	def procedureCall(self,line):
-		pass
+		m = re.match("^("+self.rxIdentifier+"\()(.*)\)$",line)					# split it up
+		if m is None:
+			raise AssemblerException("Syntax error in procedure call")
+		parameters = [x for x in m.group(2).split(",") if x != ""]				# work through parameters
+		for i in range(0,len(parameters)):
+			term = self.parseTerm(parameters[i],False)							# get the term.			
+			self.codeGen.loadParamRegister(i,term[0],term[1])		
+		if m.group(1) not in self.dictionary:									# check we know the procedure
+			raise AssemblerException("Unknown procedure "+m.group(1)+")")
+		self.codeGen.callSubroutine(self.dictionary[m.group(1)])				# compile call.
 	#
 	#		Assemble code for if/while structure. While is an If which loops to the test :)
 	#

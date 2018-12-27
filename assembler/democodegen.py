@@ -99,6 +99,13 @@ class DemoCodeGenerator(object):
 		print("${0:06x}  ds    ${1:04x} ; {2}".format(addr,count,"" if reason is None else reason))
 		return addr
 	#
+	#		Load constant/variable to a temporary area
+	#
+	def loadParamRegister(self,regNumber,isConstant,value):
+		toLoad = "#${0:04x}" if isConstant else "(${0:04x})" 
+		print("${0:06x}  ldr   r{1},{2}".format(self.pc,regNumber,toLoad.format(value)))
+		self.pc += 1
+	#
 	#		Copy parameter to a temporary area
 	#
 	def storeParamRegister(self,regNumber,address):

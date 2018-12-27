@@ -8,7 +8,7 @@ proccalc()
 proc $demo2(a)
 a[b]>c
 if(c=0):calc():endif
-demo(4,5,a[b])
+demo(4,5,a)
 if (a#0):b+1>b:endif
 while(c<0):c-1>c:endwhile
 0>index
