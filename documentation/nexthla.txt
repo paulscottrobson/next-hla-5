@@ -1,0 +1,18 @@
+Expression:
+
+finding :
+	<variable> <constant> 				load value into A
+	+ - * / ? ! & | ^ 					get the following variable|constant and do that code.
+	>									get the following variable or variable?!term and store it there.
+										create it if it doesn't exist.
+
+	def <variable>(<terms>, )			clear all local variables
+										save interim registers to terms.
+										mark start.
+
+	endproc 							compile rts.
+
+	if expr<#=0: ..... :endif 														
+	while expr<#=0: ....:endwhile
+	for expr:....:endfor
+
