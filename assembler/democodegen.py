@@ -65,11 +65,11 @@ class DemoCodeGenerator(object):
 	#
 	#		Allocate count bytes of meory, default is word size
 	#
-	def allocSpace(self,count = None):
+	def allocSpace(self,count = None,reason = None):
 		addr = self.pc
 		count = self.getWordSize() if count is None else count
 		self.pc += count
-		print("${0:06x}  ds    ${1:04x}".format(addr,count))
+		print("${0:06x}  ds    ${1:04x} ; {2}".format(addr,count,"" if reason is None else reason))
 		return addr
 	#
 	#		Copy parameter to a temporary area

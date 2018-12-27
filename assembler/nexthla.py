@@ -1,15 +1,15 @@
 # ***************************************************************************************
 # ***************************************************************************************
 #
-#		Name : 		nhla.py
+#		Name : 		nexthla.py
 #		Author :	Paul Robson (paul@robsons.org.uk)
 #		Date : 		27th December 2018
-#		Purpose :	Next High Level Assembler
+#		Purpose :	Next High Level Assembler, main program.
+#					(no codegenerator)
 #
 # ***************************************************************************************
 # ***************************************************************************************
 
-from democodegen import *
 import re
 
 # ***************************************************************************************
@@ -29,8 +29,8 @@ class AssemblerException(Exception):
 class Assembler(object):
 	def __init__(self,codeGenerator):
 		self.codeGen = codeGenerator 											# save the code generator
-		self.dictionary = { "$return":self.codeGen.allocSpace() } 				# dictionary, ident to address mapping.
-		self.keywords = "if,endif,while,endwhile,for,next,endproc".split(",")
+		self.dictionary = { "$return":self.codeGen.allocSpace(None,"$return") } # dictionary, ident to address mapping.
+		self.keywords = "if,endif,while,endwhile,for,endfor,endproc".split(",")
 		self.rxIdentifier = "[\$a-z][a-z0-9\.]*"								# rx matching identifier
 	#
 	#		Assemble a list of strings.
@@ -137,7 +137,7 @@ class Assembler(object):
 		for p in parameters:													# work through parameters
 			if re.match(self.rxIdentifier,p) is None or p.startswith("$"):		# validate the name
 				raise AssemblerException("Bad parameter "+p)
-			self.addIdentifier(p,self.codeGen.allocSpace())					# create the local if okay
+			self.addIdentifier(p,self.codeGen.allocSpace(None,p))				# create the local if okay
 		#
 		#		Find everything that is assigned to directly (e.g. >xx not >xx[4]) and create if required.
 		#
@@ -145,7 +145,7 @@ class Assembler(object):
 		for pn in range(0,len(parts)):											# check assignments exist.
 			if parts[pn].startswith(">") and not parts[pn].endswith("["):		# exclude indirection.
 				if parts[pn][1:] not in self.dictionary: 						# create if needed
-					self.addIdentifier(parts[pn][1:],self.codeGen.allocSpace())
+					self.addIdentifier(parts[pn][1:],self.codeGen.allocSpace(None,parts[pn][1:]))
 		#
 		#		Look for every identifier, except procedure names, and replace it with identifier address.
 		#
@@ -169,20 +169,44 @@ class Assembler(object):
 	#		Assemble a single instruction
 	#
 	def assembleOne(self,line):
-					print("\t\t *** "+line+" ***")
+		print("\t\t *** "+line+" ***")
+		if line == "endproc":													# procedure exit
+			self.codeGen.returnSubroutine()
+		elif line.startswith("if") or line.startswith("while"):					# if and while are very similar
+			self.startIfWhile(line)												# there's just a jump back in while
+		elif line == "endif" or line == "endwhile":
+			self.endIfWhile(line)
+		elif line.startswith("for"):											# for
+			self.startFor(line)
+		elif line == "endfor":													# endfor
+			self.endFor(line)
+		elif re.match("^"+self.rxIdentifier+"\(",line) is not None:				# <procedure>(parameters)
+			self.procedureCall(line)
+		else:	
+			self.processExpression(line)										# failing that, an expression.
+	#
+	#		Assemble a procedure invocation
+	#
+	def procedureCall(self,line):
+		pass
+	#
+	#		Assemble code for if/while structure. While is an If which loops to the test :)
+	#
+	def startIfWhile(self,line):
+		pass
+	def endIfWhile(self,line):
+		pass
+	#
+	#		Assemble code for for/endfor
+	#
+	def startFor(self,line):
+		pass
+	def endFor(self,line):
+		pass
+	#
+	#		Convert an expression into code.
+	#
+	def processExpression(self,line):
+		line = [x for x in re.split("([\+\-\*\/\%\&\|\^\>])",line) if x != ""]	# split into terms and operators.
+		print(line)
 
-source = """
-proc demo(a,b,c):a[1]+b>c>d:4>d[3]:endproc			// comment
-proccalc()
-1+2-3*4/5%6&7^8|8>$test:endproc
-proc $demo2(a)
-calc()
-demo(4,5,a[b])
-if (a#0):b+1>b:endif
-while(c#0):c-1>c:endif
-for (42):b+"text">d:endif
-"hello world">$message
-endproc""".split("\n")
-asm = Assembler(DemoCodeGenerator())
-asm.assemble(source)
-print(asm.dictionary)
