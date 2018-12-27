@@ -1,0 +1,51 @@
+Machine Forth words
+===================
+
+: <name> 			
+
+and
+xor 
+or		
++
+*
+-
+
+2*
+2/
+com
+
+dup
+nip
+over 				
+swap
+drop
+
+@
+!
+b@
+b!
++!
+
+@a+ 				Fetch from A increment
+b@a+				same but byte
+!a+					Store to A increment
+b!a+				same but byte
+
+a! 					TOS>A
+a@ 					A>TOS
+@a 					Fetch from A
+!a 					Store to A
+b@a b!a 			Byte equivalents
+
+@a[n]				Fetch from A+n (0,2,4,6,8,10,12,14)
+!a[n]				Store to A+n (0,2,4,6,8,10,12,14) 
+
+; 					return
+-; 					"tail recursive call"
+
+push 				replace >r r>
+pop 
+
+if/-if else then 	condition
+for next .... 		?
+begin while/-while
