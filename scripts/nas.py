@@ -9,6 +9,17 @@ proc test2(a,b)
 a>c:2>d:3>$glbl:4>$demo
 "hello" > $return
 endproc
+proc test()
+	demo(1,2,3)
+	test2(a,b)
+	demo()
+endproc
+proc test3()
+	if (a#0):test():endif
+	while (a<0):test():endwhile
+	0>index
+	for(a):test():endfor
+endproc
 """.split("\n")
 asm = Assembler(DemoCodeGenerator())
 asm.assemble(source)

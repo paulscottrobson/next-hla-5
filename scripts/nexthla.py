@@ -31,7 +31,7 @@ class Assembler(object):
 		self.codeGen = codeGenerator 											# save the code generator
 		self.dictionary = { "$return":self.codeGen.allocSpace(None,"$return") } # dictionary, ident to address mapping.
 		self.keywords = "if,endif,while,endwhile,for,endfor,endproc".split(",")
-		self.rxIdentifier = "[\$a-z][a-z0-9\.]*"								# rx matching identifier
+		self.rxIdentifier = "[\$\_a-z][a-z0-9\.\_]*"							# rx matching identifier
 	#
 	#		Assemble a list of strings.
 	#
@@ -79,7 +79,8 @@ class Assembler(object):
 			if name.startswith("$") or name.endswith("("):
 				self.dictionary[name] = oldDictionary[name]
 		#
-		params = self.processIdentifiers(m.group(2),False).split(",")			# Allocate local variables, get params.
+		params = self.processIdentifiers(m.group(2),False)						# Allocate local variables, get params.
+		params = [x for x in params.split(",") if x != ""]						# split into a list.
 		self.addIdentifier(m.group(1),self.codeGen.getAddress())				# save procedure getAddress
 		for i in range(0,len(params)):											# for each parameter.
 			if not params[i].startswith(Assembler.VARMARKER):					# check parameters
@@ -90,11 +91,14 @@ class Assembler(object):
 	#
 	def assembleProcedureBody(self,body):
 		body = self.processIdentifiers(body,False)								# should now only be proc calls as identifiers
+		self.structureStack = [ "Marker" ]										# In case over popping.
 		for line in [x for x in body.split(":") if x != ""]:
 			if line == Assembler.LINEMARKER:									# is it a line marker ?
 				AssemblerException.LINE += 1
 			else:																# it's an instruction.
 				self.assembleInstruction(line)
+		if len(self.structureStack) != 1:
+			raise AssemblerException("Structure imbalance")
 	#
 	#		Assemble a single intruction
 	#
@@ -102,9 +106,75 @@ class Assembler(object):
 		print("\t\t ------ "+line+" ------")
 		if line == "endproc":													# endproc
 			self.codeGen.returnSubroutine()
+		elif line.startswith("if") or line.startswith("while"):					# if and while are very similar
+			self.startIfWhile(line)												# there's just a jump back in while
+		elif line == "endif" or line == "endwhile":
+			self.endIfWhile(line)
+		elif line.startswith("for"):											# for
+			self.startFor(line)
+		elif line == "endfor":													# endfor
+			self.endFor(line)
+		elif re.match("^"+self.rxIdentifier+"\(",line) is not None:				# <procedure>(parameters)
+			self.procedureCall(line)
 		else:
 			self.assembleExpression(line)										# try it as a straight expression.
 	#
+	#		Assemble a procedure invocation
+	#
+	def procedureCall(self,line):
+		m = re.match("^("+self.rxIdentifier+"\()(.*)\)$",line)					# split it up
+		if m is None:
+			raise AssemblerException("Syntax error in procedure call")
+		parameters = [x for x in m.group(2).split(",") if x != ""]				# work through parameters
+		print(parameters)
+		for i in range(0,len(parameters)):
+			mp = re.match("^(\@?)(\d+)$",parameters[i]) 						# simple. var/int only supported.
+			if mp is None:														# not matched
+				raise AssemblerException("Bad parameter")
+			self.codeGen.loadParamRegister(i,mp.group(1) == "",int(mp.group(2)))
+		if m.group(1) not in self.dictionary:									# check we know the procedure
+			raise AssemblerException("Unknown procedure "+m.group(1)+")")
+		self.codeGen.callSubroutine(self.dictionary[m.group(1)])				# compile call.
+	#
+	#		Assemble code for if/while structure. While is an If which loops to the test :)
+	#
+	def startIfWhile(self,line):
+		m = re.match("^(while|if)\((.*)([\#\=\<])0\)$",line)					# decode it.
+		if m is None:															# couldn't
+			raise AssemblerException("Structure syntax error")
+		info = [ m.group(1), self.codeGen.getAddress() ]						# structure, loop address
+		test = { "#":"z","=":"nz","<":"p" }[m.group(3)]							# this is the *fail* test
+		info.append(test)
+		self.assembleExpression(m.group(2))										# do the expression part
+		info.append(self.codeGen.getAddress())									# struct,loop,toptest,testaddr
+		self.codeGen.jumpInstruction(test,0)									# jump to afterwards on fail.
+		self.structureStack.append(info)										# put on stack
+
+	def endIfWhile(self,line):
+		info = self.structureStack.pop()										# get top structure.
+		if "end"+info[0] != line:												# is it not matching ?
+			raise AssemblerException("Structure imbalance")
+		if line == "endwhile":													# if while loop back before test.
+			self.codeGen.jumpInstruction("",info[1])
+		self.codeGen.jumpInstruction(info[2],self.codeGen.getAddress(),info[3])	# overwrite the jump.
+	#
+	#		Assemble code for for/endfor
+	#
+	def startFor(self,line):
+		m = re.match("^for\((.*)\)$",line)										# split it up
+		if m is None:															# check format.
+			raise AssemblerException("Poorly formatted for")
+		self.assembleExpression(m.group(1))										# compile the loop count value
+		self.structureStack.append(["for",self.codeGen.getAddress()])			# push on the stack.
+		self.codeGen.forCode()													# generate the for code.
+		if "index" in self.dictionary:											# save index if it exists
+			self.codeGen.storeDirect(self.dictionary["index"])
+	#
+	def endFor(self,line):
+		info = self.structureStack.pop()										# get the element off the stack
+		if info[0] != "for":													# check it is correct.
+			raise AssemblerException("endfor without for")
+		self.codeGen.endForCode(info[1])		#
 	#		Assemble an expression. Convert the terms to information groups, then compile it.
 	#
 	def assembleExpression(self,line):		
@@ -176,5 +246,3 @@ class Assembler(object):
 Assembler.LINEMARKER = "~"
 Assembler.VARMARKER = "@"
 
-# TODO: Procedure calls
-# TODO: Structures and stack.
