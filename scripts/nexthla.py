@@ -39,7 +39,7 @@ class Assembler(object):
 		#
 		#		Join together as one long string, fix hexadecimals
 		#
-		source = (":"+Assembler.LINEMARKER+":").join(source)					# one long string
+		source = (":~:").join(source)											# one long string
 		source = source.replace(" ","").lower() 								# make it all lowercase and no spaces.
 		source = self.processHexConstants(source)								# convert hex constants
 		source = self.processIdentifiers(source,True)							# convert all globals.
@@ -48,7 +48,7 @@ class Assembler(object):
 		#
 		source = re.split("(proc"+self.rxIdentifier+"\(.*?\))",source)			# split up by procedures.	
 		assert not source[0].startswith("proc") and len(source) % 2 != 0		# should be preamble and odd # parts
-		AssemblerException.LINE = source[0].count(Assembler.LINEMARKER)			# start line.
+		AssemblerException.LINE = source[0].count("~")							# start line.
 		for i in range(1,len(source),2):										# for each pair.
 			self.processProcedureHeader(source[i])								# process the header.
 			self.assembleProcedureBody(source[i+1])								# assemble the body.
@@ -67,7 +67,7 @@ class Assembler(object):
 		procID = ProcedureIdentifier(m.group(1),self.codeGen.getAddress(),len(params))
 		self.dictionary.addIdentifier(procID)									# save procedure getAddress
 		for i in range(0,len(params)):											# for each parameter.
-			if not params[i].startswith(Assembler.VARMARKER):					# check parameters
+			if not params[i].startswith("@"):									# check parameters
 				raise AssemblerException("Bad parameter")
 			self.codeGen.storeParamRegister(i,int(params[i][1:]))				# write parameter to local variable.
 	#
@@ -77,7 +77,7 @@ class Assembler(object):
 		body = self.processIdentifiers(body,False)								# should now only be proc calls as identifiers
 		self.structureStack = [ "Marker" ]										# In case over popping.
 		for line in [x for x in body.split(":") if x != ""]:
-			if line == Assembler.LINEMARKER:									# is it a line marker ?
+			if line == "~":														# is it a line marker ?
 				AssemblerException.LINE += 1
 			else:																# it's an instruction.
 				self.assembleInstruction(line)
@@ -175,7 +175,8 @@ class Assembler(object):
 			if m is None:
 				m = re.match("^(\@?)(\d+)([\!\?])(\@?)(\d+)$",term) 			# complex. var/int[?!]var/int
 			if m is None:
-				raise CompilerException("Can't understand term "+term)
+				print(term)
+				raise AssemblerException("Can't understand term "+term)
 			line[i] = m.groups()												# put it back in the list.
 		#
 		self.codeGen.loadDirect(line[0][0] == "",int(line[0][1]))				# the first term.
@@ -231,9 +232,7 @@ class Assembler(object):
 						if info is None:										# is it new, if so make space.
 							info = VariableIdentifier(parts[i],self.codeGen.allocSpace(None,parts[i]))
 							self.dictionary.addIdentifier(info)
-						parts[i] = Assembler.VARMARKER+str(info.getValue())
-		return "".join(parts)													# put it back together
+						parts[i] = "@"+str(info.getValue())
+		return "".join(parts).replace("@@","")									# put it back together
 
-Assembler.LINEMARKER = "~"
-Assembler.VARMARKER = "@"
 

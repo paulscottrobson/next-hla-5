@@ -20,6 +20,7 @@ proc test3()
 	0>index
 	for(a):test():endfor
 	0x7ffe > a
+	@$return > a
 endproc
 """.split("\n")
 asm = Assembler(DemoCodeGenerator())
