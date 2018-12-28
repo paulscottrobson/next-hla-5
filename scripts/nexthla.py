@@ -11,16 +11,8 @@
 # ***************************************************************************************
 
 import re
-
-# ***************************************************************************************
-#									Exception for HLA
-# ***************************************************************************************
-
-class AssemblerException(Exception):
-	def __init__(self,message):
-		Exception.__init__(self)
-		self.message = message
-		print(message,AssemblerException.LINE)
+from errors import *
+from dictionary import *
 
 # ***************************************************************************************
 #									Main Assembler class
@@ -29,7 +21,9 @@ class AssemblerException(Exception):
 class Assembler(object):
 	def __init__(self,codeGenerator):
 		self.codeGen = codeGenerator 											# save the code generator
-		self.dictionary = { "$return":self.codeGen.allocSpace(None,"$return") } # dictionary, ident to address mapping.
+		self.dictionary = Dictionary() 											# dictionary, ident to address mapping.
+		result = self.codeGen.allocSpace(None,"$return")						# $return global
+		self.dictionary.addIdentifier(VariableIdentifier("$return",result))
 		self.keywords = "if,endif,while,endwhile,for,endfor,endproc".split(",")
 		self.rxIdentifier = "[\$\_a-z][a-z0-9\.\_]*"							# rx matching identifier
 	#
@@ -57,14 +51,7 @@ class Assembler(object):
 		for i in range(1,len(source),2):										# for each pair.
 			self.processProcedureHeader(source[i])								# process the header.
 			self.assembleProcedureBody(source[i+1])								# assemble the body.
-		#
-		#		Remove everything except global procedures and $result.
-		#
-		oldDictionary = self.dictionary 										# remove all that aren't $<name>(
-		self.dictionary = {}													# leave $result in also.
-		for name in self.dictionary.keys():
-			if (name.startswith("$") and name.endswith("(")) or name == "$result":
-				self.dictionary[name] = oldDictionary[name]
+		self.dictionary.endModule()												# only leave global procs.
 	#
 	#		Process procedure header (e.g. proc<identifier>(<params>)
 	#
@@ -72,16 +59,12 @@ class Assembler(object):
 		m = re.match("proc("+self.rxIdentifier+"\()(.*)\)",header)				# split into name and parameters.
 		if m is None:
 			raise AssemblerException("Bad procedure definition")
-		#
-		oldDictionary = self.dictionary											# remove all local variables.
-		self.dictionary = {}													# from the dictionary. 
-		for name in oldDictionary.keys():
-			if name.startswith("$") or name.endswith("("):
-				self.dictionary[name] = oldDictionary[name]
-		#
+
+		self.dictionary.removeLocalVariables()									# remove all locals.
 		params = self.processIdentifiers(m.group(2),False)						# Allocate local variables, get params.
 		params = [x for x in params.split(",") if x != ""]						# split into a list.
-		self.addIdentifier(m.group(1),self.codeGen.getAddress())				# save procedure getAddress
+		procID = ProcedureIdentifier(m.group(1),self.codeGen.getAddress())
+		self.dictionary.addIdentifier(procID)									# save procedure getAddress
 		for i in range(0,len(params)):											# for each parameter.
 			if not params[i].startswith(Assembler.VARMARKER):					# check parameters
 				raise AssemblerException("Bad parameter")
@@ -126,15 +109,15 @@ class Assembler(object):
 		if m is None:
 			raise AssemblerException("Syntax error in procedure call")
 		parameters = [x for x in m.group(2).split(",") if x != ""]				# work through parameters
-		print(parameters)
 		for i in range(0,len(parameters)):
 			mp = re.match("^(\@?)(\d+)$",parameters[i]) 						# simple. var/int only supported.
 			if mp is None:														# not matched
 				raise AssemblerException("Bad parameter")
 			self.codeGen.loadParamRegister(i,mp.group(1) == "",int(mp.group(2)))
-		if m.group(1) not in self.dictionary:									# check we know the procedure
+		procInfo = self.dictionary.find(m.group(1))								# get proc info
+		if procInfo is None:													# check we know the procedure
 			raise AssemblerException("Unknown procedure "+m.group(1)+")")
-		self.codeGen.callSubroutine(self.dictionary[m.group(1)])				# compile call.
+		self.codeGen.callSubroutine(procInfo.getValue())						# compile call.
 	#
 	#		Assemble code for if/while structure. While is an If which loops to the test :)
 	#
@@ -167,8 +150,9 @@ class Assembler(object):
 		self.assembleExpression(m.group(1))										# compile the loop count value
 		self.structureStack.append(["for",self.codeGen.getAddress()])			# push on the stack.
 		self.codeGen.forCode()													# generate the for code.
-		if "index" in self.dictionary:											# save index if it exists
-			self.codeGen.storeDirect(self.dictionary["index"])
+		indexInfo = self.dictionary.find("index")								# index defined ?
+		if indexInfo is not None:												# save index if it exists
+			self.codeGen.storeDirect(indexInfo.getValue())
 	#
 	def endFor(self,line):
 		info = self.structureStack.pop()										# get the element off the stack
@@ -231,17 +215,12 @@ class Assembler(object):
 			if idSplit.match(parts[i]) and not parts[i].endswith("("):			# if identifier and not a call
 				if parts[i] not in self.keywords:								# and not a keywords
 					if not globalsOnly or parts[i].startswith("$"):				# doing globals only ?
-						if parts[i] not in self.dictionary:						# is it new, if so make space.
-							self.addIdentifier(parts[i],self.codeGen.allocSpace(None,parts[i]))
-						parts[i] = Assembler.VARMARKER+str(self.dictionary[parts[i]])
+						info = self.dictionary.find(parts[i])					# look it up.
+						if info is None:										# is it new, if so make space.
+							info = VariableIdentifier(parts[i],self.codeGen.allocSpace(None,parts[i]))
+							self.dictionary.addIdentifier(info)
+						parts[i] = Assembler.VARMARKER+str(info.getValue())
 		return "".join(parts)													# put it back together
-	#
-	#		Add an identifier to the dictionary, testing for collision.
-	#
-	def addIdentifier(self,name,value):
-		if name in self.dictionary:												# check doesn't already exist
-			raise AssemblerException("Duplicate identifier "+name)
-		self.dictionary[name] = value											# update dictionary.
 
 Assembler.LINEMARKER = "~"
 Assembler.VARMARKER = "@"
