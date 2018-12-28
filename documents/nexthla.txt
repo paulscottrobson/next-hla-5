@@ -11,6 +11,8 @@ Expression:
 
 	endproc 							compile rts.
 
+	@variable 							address
+
 	variables/procedures are [a-z_][a-z0-9._]		
 	hex constants begin 0xhhhh
 
@@ -22,6 +24,5 @@ Expression:
 	for (expr):....:endfor
 
 # TODO: 
-#		Address of variable (match &/Assembler.VARMARKER)
 # 		Only create l-expr variables ?
 #		Identify a scheme for passing routines in.
