@@ -28,7 +28,11 @@ class VariableIdentifier(Identifier):
 	pass
 
 class ProcedureIdentifier(Identifier):
-	pass
+	def __init__(self,name,value,paramCount):
+		Identifier.__init__(self,name,value)
+		self.paramCount = paramCount
+	def getParameterCount(self):
+		return self.paramCount
 
 # ***************************************************************************************
 #									Dictionary object

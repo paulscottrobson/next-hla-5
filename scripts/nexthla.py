@@ -37,10 +37,11 @@ class Assembler(object):
 		source = [x.replace("\t"," ").strip() for x in source]					# remove tabs, indent, trailing space
 		source = self.processQuotedString(source)								# remove quoted strings.
 		#
-		#		Join together as one long string, then split by procedure
+		#		Join together as one long string, fix hexadecimals
 		#
 		source = (":"+Assembler.LINEMARKER+":").join(source)					# one long string
 		source = source.replace(" ","").lower() 								# make it all lowercase and no spaces.
+		source = self.processHexConstants(source)								# convert hex constants
 		source = self.processIdentifiers(source,True)							# convert all globals.
 		#
 		#		Subdivide into procedures.
@@ -63,7 +64,7 @@ class Assembler(object):
 		self.dictionary.removeLocalVariables()									# remove all locals.
 		params = self.processIdentifiers(m.group(2),False)						# Allocate local variables, get params.
 		params = [x for x in params.split(",") if x != ""]						# split into a list.
-		procID = ProcedureIdentifier(m.group(1),self.codeGen.getAddress())
+		procID = ProcedureIdentifier(m.group(1),self.codeGen.getAddress(),len(params))
 		self.dictionary.addIdentifier(procID)									# save procedure getAddress
 		for i in range(0,len(params)):											# for each parameter.
 			if not params[i].startswith(Assembler.VARMARKER):					# check parameters
@@ -118,6 +119,8 @@ class Assembler(object):
 		if procInfo is None:													# check we know the procedure
 			raise AssemblerException("Unknown procedure "+m.group(1)+")")
 		self.codeGen.callSubroutine(procInfo.getValue())						# compile call.
+		if procInfo.getParameterCount() != len(parameters):
+			raise AssemblerException("Wrong number of parameters")
 	#
 	#		Assemble code for if/while structure. While is an If which loops to the test :)
 	#
@@ -204,6 +207,15 @@ class Assembler(object):
 						parts[pn] = str(self.codeGen.createStringConstant(parts[pn][1:-1]))
 				source[line] = "".join(parts)									# put it back together.
 		return source
+	#
+	#		Process hexadecimal constants
+	#
+	def processHexConstants(self,body):
+		parts = re.split("(0x[0-9a-f]+)",body)									# split them out.
+		for i in range(0,len(parts)):
+			if parts[i].startswith("0x"):
+				parts[i] = str(int(parts[i][2:],16))
+		return "".join(parts)
 	#
 	#		Process the identifiers, allocating if necessary. Can do globals only, or all.
 	#		Does not touch procedure invocation.

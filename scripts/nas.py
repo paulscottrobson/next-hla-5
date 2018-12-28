@@ -12,13 +12,14 @@ endproc
 proc test()
 	demo(1,2,3)
 	test2(a,b)
-	demo()
+	demo(4,2,96)
 endproc
 proc test3()
 	if (a#0):test():endif
 	while (a<0):test():endwhile
 	0>index
 	for(a):test():endfor
+	0x7ffe > a
 endproc
 """.split("\n")
 asm = Assembler(DemoCodeGenerator())

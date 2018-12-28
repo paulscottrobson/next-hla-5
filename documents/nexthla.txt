@@ -12,7 +12,9 @@ Expression:
 	endproc 							compile rts.
 
 	variables/procedures are [a-z_][a-z0-9._]		
-	global variables/procedures begin with $
+	hex constants begin 0xhhhh
+
+	global variables/procedures begin with $. local otherwise.
 	scope is different for the two.
 
 	if (expr<#=0): ..... :endif 														
@@ -20,8 +22,6 @@ Expression:
 	for (expr):....:endfor
 
 # TODO: 
-#		Process hexadecimal constants.
-# 		Track procedure parameter counts.
 #		Address of variable (match &/Assembler.VARMARKER)
 # 		Only create l-expr variables ?
 #		Identify a scheme for passing routines in.
