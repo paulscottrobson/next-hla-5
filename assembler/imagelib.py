@@ -110,7 +110,7 @@ class BootImage(object):
 			assert name not in self.dictionary
 			self.dictionary[name] = record
 			start = start + self.read(0,start+0)+self.read(0,start+1)*256
-		print(self.dictionary)			
+		#print(self.dictionary)			
 	#
 	#		Find a word in the dictionary.
 	#
