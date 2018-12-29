@@ -150,7 +150,7 @@ __Core__Mult_Shift:
 
 link3:
     dw link4-link3
- 	db "system.and",0
+ 	db "sys.and",0
 		ld 		a,h
 		and 	b
 		ld 		h,a
@@ -161,7 +161,7 @@ link3:
 
 link4:
     dw link5-link4
- 	db "system.xor",0
+ 	db "sys.xor",0
 		ld 		a,h
 		xor 	b
 		ld 		h,a
@@ -172,7 +172,7 @@ link4:
 
 link5:
     dw link6-link5
- 	db "system.and",0
+ 	db "sys.or",0
 		ld 		a,h
 		or 		b
 		ld 		h,a

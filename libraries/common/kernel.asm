@@ -9,17 +9,15 @@
 ; ***************************************************************************************
 ; ***************************************************************************************
 
-StackTop = $7EFC 									;      -$7EFC Top of stack
-DictionaryPage = $20 								; $20 = dictionary page
-FirstCodePage = $22 								; $22 = code page.
+FirstCodePage = $20 								; $20 = code page.
+StackTop = $5FFE 									; Z80 call stack top.
 
 		org 	$8000 								; $8000 boot.
 		jr 		Boot
 		org 	$8004 								; $8004 address of sysinfo
 		dw 		SystemInformation 
-		org 	$8008 								; $8008 offset to first definition.
-WordListPointer:
-		dw 	 	linkHeader-WordListPointer,0
+		org 	$8008 								; $8008 address of first definition.
+		dw 	 	linkHeader
 
 Boot:	db 		$DD,$01
 		ld 		sp,StackTop							; reset Z80 Stack
@@ -27,9 +25,6 @@ Boot:	db 		$DD,$01
 		db 		$ED,$91,7,2							; set turbo port (7) to 2 (14Mhz speed)
 		ld 		l,0	 								; graphic mode 0
 		call 	GFXMode
-		ld 		de,WordListPointer
-		ld 		hl,4
-		call 	GFXWriteHexWord
 		ld 		a,(StartAddressPage)				; Switch to start page
 		db 		$ED,$92,$56
 		inc 	a
@@ -44,4 +39,3 @@ __KernelHalt: 										; if boot address not set.
 
 AlternateFont:										; nicer font
 		include "font.inc" 							; can be $3D00 here to save memory
-

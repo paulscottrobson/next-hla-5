@@ -9,7 +9,7 @@
 ; *********************************************************************************
 ; *********************************************************************************
 
-@word 	system.and()
+@word 	sys.and()
 		ld 		a,h
 		and 	b
 		ld 		h,a
@@ -18,7 +18,7 @@
 		ld 		l,a
 		ret
 
-@word 	system.xor()
+@word 	sys.xor()
 		ld 		a,h
 		xor 	b
 		ld 		h,a
@@ -27,7 +27,7 @@
 		ld 		l,a
 		ret
 		
-@word 	system.and()
+@word 	sys.or()
 		ld 		a,h
 		or 		b
 		ld 		h,a
