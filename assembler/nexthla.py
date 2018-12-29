@@ -234,5 +234,3 @@ class Assembler(object):
 							self.dictionary.addIdentifier(info)
 						parts[i] = "@"+str(info.getValue())
 		return "".join(parts).replace("@@","")									# put it back together
-
-

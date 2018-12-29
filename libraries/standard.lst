@@ -1,0 +1,1330 @@
+              	; --------------------------------------
+              	; zasm: assemble "library.asm"
+              	; date: 2018-12-29 07:19:38
+              	; --------------------------------------
+
+
+              		include "common/kernel.asm"
+              	; ***************************************************************************************
+              	; ***************************************************************************************
+              	;
+              	;		Name : 		kernel.asm
+              	;		Author :	Paul Robson (paul@robsons.org.uk)
+              	;		Date : 		27th December 2018
+              	;		Purpose :	Flat Forth Kernel
+              	;
+              	; ***************************************************************************************
+              	; ***************************************************************************************
+              	
+7EFC:         	StackTop = $7EFC 									;      -$7EFC Top of stack
+0020:         	DictionaryPage = $20 								; $20 = dictionary page
+0022:         	FirstCodePage = $22 								; $22 = code page.
+              	
+8000:         			org 	$8000 								; $8000 boot.
+8000: 180A    			jr 		Boot
+8002: FFFF    			org 	$8004 								; $8004 address of sysinfo
+8004: 6487    			dw 		SystemInformation 
+8006: FFFF    			org 	$8008 								; $8008 offset to first definition.
+8008:         	WordListPointer:
+8008: 2E030000			dw 	 	linkHeader-WordListPointer,0
+              	
+800C: DD01    	Boot:	db 		$DD,$01
+800E: 31FC7E  			ld 		sp,StackTop							; reset Z80 Stack
+8011: F3      			di											; disable interrupts
+8012: ED910702			db 		$ED,$91,7,2							; set turbo port (7) to 2 (14Mhz speed)
+8016: 2E00    			ld 		l,0	 								; graphic mode 0
+8018: CDB384  			call 	GFXMode
+801B: 110880  			ld 		de,WordListPointer
+801E: 210400  			ld 		hl,4
+8021: CDF784  			call 	GFXWriteHexWord
+8024: 3A7287  			ld 		a,(StartAddressPage)				; Switch to start page
+8027: ED9256  			db 		$ED,$92,$56
+802A: 3C      			inc 	a
+802B: ED9257  			db 		$ED,$92,$57
+802E: 3D      			dec 	a
+802F: 08      			ex 		af,af'								; Set A' to current page.
+8030: 2A7087  			ld 		hl,(StartAddress) 					; start running address
+8033: E9      			jp 		(hl) 								; and start
+              	
+8034:         	__KernelHalt: 										; if boot address not set.
+8034: 18FE    			jr 		__KernelHalt
+              	
+8036:         	AlternateFont:										; nicer font
+              			include "font.inc" 							; can be $3D00 here to save memory
+8036: 00000000	  db 0,0,0,0,0,0,0,0,12,30,30,12,12,0,12,0,54,54,0,0,0,0,0,0,54,54,127,54,127,54,54,0,24,62,96,60,6,124,24,0,0,99,102,12,24,51,99,0,28,54,28,59,110,102,59,0,48,48,96,0,0,0,0,0,12,24,48,48,48,24,12,0,48,24,12,12,12,24,48,0,0,51,30,127,30,51,0,0,0,24,24,126,24,24,0,0,0,0,0,0,0,24,24,48,0,0,0,126,0,0,0,0,0,0,0,0,0,24,24,0,3,6,12,24,48,96,64,0,62,99,103,111,123,115,62,0,24,56,24,24,24,24,126,0,60,102,6,28,48,102,126,0,60,102,6,28,6,102,60,0,14,30,54,102,127,6,15,0,126,96,124,6,6,102,60,0,28,48,96,124,102,102,60,0,126,102,6,12,24,24,24,0,60,102,102,60,102,102,60,0,60,102,102,62,6,12,56,0,0,24,24,0,0,24,24,0,0,24,24,0,0,24,24,48,12,24,48,96,48,24,12,0,0,0,126,0,0,126,0,0,48,24,12,6,12,24,48,0,60,102,6,12,24,0,24,0,62,99,111,111,111,96,60,0,24,60,102,102,126,102,102,0,126,51,51,62,51,51,126,0,30,51,96,96,96,51,30,0,124,54,51,51,51,54,124,0,127,49,52,60,52,49,127,0,127,49,52,60,52,48,120,0,30,51,96,96,103,51,31,0,102,102,102,126,102,102,102,0,60,24,24,24,24,24,60,0,15,6,6,6,102,102,60,0,115,51,54,60,54,51,115,0,120,48,48,48,49,51,127,0,99,119,127,127,107,99,99,0,99,115,123,111,103,99,99,0,28,54,99,99,99,54,28,0,126,51,51,62,48,48,120,0,60,102,102,102,110,60,14,0,126,51,51,62,54,51,115,0,60,102,112,56,14,102,60,0,126,90,24,24,24,24,60,0,102,102,102,102,102,102,126,0,102,102,102,102,102,60,24,0,99,99,99,107,127,119,99,0,99,99,54,28,28,54,99,0,102,102,102,60,24,24,60,0,127,99,70,12,25,51,127,0,60,48,48,48,48,48,60,0,96,48,24,12,6,3,1,0,60,12,12,12,12,12,60,0,8,28,54,99,0,0,0,0,0,0,0,0,0,0,0,127,24,24,12,0,0,0,0,0,0,0,60,6,62,102,59,0,112,48,48,62,51,51,110,0,0,0,60,102,96,102,60,0,14,6,6,62,102,102,59,0,0,0,60,102,126,96,60,0,28,54,48,120,48,48,120,0,0,0,59,102,102,62,6,124,112,48,54,59,51,51,115,0,24,0,56,24,24,24,60,0,6,0,6,6,6,102,102,60,112,48,51,54,60,54,115,0,56,24,24,24,24,24,60,0,0,0,102,127,127,107,99,0,0,0,124,102,102,102,102,0,0,0,60,102,102,102,60,0,0,0,110,51,51,62,48,120,0,0,59,102,102,62,6,15,0,0,110,59,51,48,120,0,0,0,62,96,60,6,124,0,8,24,62,24,24,26,12,0,0,0,102,102,102,102,59,0,0,0,102,102,102,60,24,0,0,0,99,107,127,127,54,0,0,0,99,54,28,54,99,0,0,0,102,102,102,62,6,124,0,0,126,76,24,50,126,0,14,24,24,112,24,24,14,0,12,12,12,0,12,12,12,0,112,24,24,14,24,24,112,0,59,110,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+803A: 00000000	
+803E: 0C1E1E0C	
+8042: 0C000C00	
+8046: 36360000	
+804A: 00000000	
+804E: 36367F36	
+8052: 7F363600	
+8056: 183E603C	
+805A: 067C1800	
+805E: 0063660C	
+8062: 18336300	
+8066: 1C361C3B	
+806A: 6E663B00	
+806E: 30306000	
+8072: 00000000	
+8076: 0C183030	
+807A: 30180C00	
+807E: 30180C0C	
+8082: 0C183000	
+8086: 00331E7F	
+808A: 1E330000	
+808E: 0018187E	
+8092: 18180000	
+8096: 00000000	
+809A: 00181830	
+809E: 0000007E	
+80A2: 00000000	
+80A6: 00000000	
+80AA: 00181800	
+80AE: 03060C18	
+80B2: 30604000	
+80B6: 3E63676F	
+80BA: 7B733E00	
+80BE: 18381818	
+80C2: 18187E00	
+80C6: 3C66061C	
+80CA: 30667E00	
+80CE: 3C66061C	
+80D2: 06663C00	
+80D6: 0E1E3666	
+80DA: 7F060F00	
+80DE: 7E607C06	
+80E2: 06663C00	
+80E6: 1C30607C	
+80EA: 66663C00	
+80EE: 7E66060C	
+80F2: 18181800	
+80F6: 3C66663C	
+80FA: 66663C00	
+80FE: 3C66663E	
+8102: 060C3800	
+8106: 00181800	
+810A: 00181800	
+810E: 00181800	
+8112: 00181830	
+8116: 0C183060	
+811A: 30180C00	
+811E: 00007E00	
+8122: 007E0000	
+8126: 30180C06	
+812A: 0C183000	
+812E: 3C66060C	
+8132: 18001800	
+8136: 3E636F6F	
+813A: 6F603C00	
+813E: 183C6666	
+8142: 7E666600	
+8146: 7E33333E	
+814A: 33337E00	
+814E: 1E336060	
+8152: 60331E00	
+8156: 7C363333	
+815A: 33367C00	
+815E: 7F31343C	
+8162: 34317F00	
+8166: 7F31343C	
+816A: 34307800	
+816E: 1E336060	
+8172: 67331F00	
+8176: 6666667E	
+817A: 66666600	
+817E: 3C181818	
+8182: 18183C00	
+8186: 0F060606	
+818A: 66663C00	
+818E: 7333363C	
+8192: 36337300	
+8196: 78303030	
+819A: 31337F00	
+819E: 63777F7F	
+81A2: 6B636300	
+81A6: 63737B6F	
+81AA: 67636300	
+81AE: 1C366363	
+81B2: 63361C00	
+81B6: 7E33333E	
+81BA: 30307800	
+81BE: 3C666666	
+81C2: 6E3C0E00	
+81C6: 7E33333E	
+81CA: 36337300	
+81CE: 3C667038	
+81D2: 0E663C00	
+81D6: 7E5A1818	
+81DA: 18183C00	
+81DE: 66666666	
+81E2: 66667E00	
+81E6: 66666666	
+81EA: 663C1800	
+81EE: 6363636B	
+81F2: 7F776300	
+81F6: 6363361C	
+81FA: 1C366300	
+81FE: 6666663C	
+8202: 18183C00	
+8206: 7F63460C	
+820A: 19337F00	
+820E: 3C303030	
+8212: 30303C00	
+8216: 6030180C	
+821A: 06030100	
+821E: 3C0C0C0C	
+8222: 0C0C3C00	
+8226: 081C3663	
+822A: 00000000	
+822E: 00000000	
+8232: 0000007F	
+8236: 18180C00	
+823A: 00000000	
+823E: 00003C06	
+8242: 3E663B00	
+8246: 7030303E	
+824A: 33336E00	
+824E: 00003C66	
+8252: 60663C00	
+8256: 0E06063E	
+825A: 66663B00	
+825E: 00003C66	
+8262: 7E603C00	
+8266: 1C363078	
+826A: 30307800	
+826E: 00003B66	
+8272: 663E067C	
+8276: 7030363B	
+827A: 33337300	
+827E: 18003818	
+8282: 18183C00	
+8286: 06000606	
+828A: 0666663C	
+828E: 70303336	
+8292: 3C367300	
+8296: 38181818	
+829A: 18183C00	
+829E: 0000667F	
+82A2: 7F6B6300	
+82A6: 00007C66	
+82AA: 66666600	
+82AE: 00003C66	
+82B2: 66663C00	
+82B6: 00006E33	
+82BA: 333E3078	
+82BE: 00003B66	
+82C2: 663E060F	
+82C6: 00006E3B	
+82CA: 33307800	
+82CE: 00003E60	
+82D2: 3C067C00	
+82D6: 08183E18	
+82DA: 181A0C00	
+82DE: 00006666	
+82E2: 66663B00	
+82E6: 00006666	
+82EA: 663C1800	
+82EE: 0000636B	
+82F2: 7F7F3600	
+82F6: 00006336	
+82FA: 1C366300	
+82FE: 00006666	
+8302: 663E067C	
+8306: 00007E4C	
+830A: 18327E00	
+830E: 0E181870	
+8312: 18180E00	
+8316: 0C0C0C00	
+831A: 0C0C0C00	
+831E: 7018180E	
+8322: 18187000	
+8326: 3B6E0000	
+832A: 00000000	
+832E: 00...   	
+              	
+              	
+              		include "temp/__source.asm"
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		divide.asm
+              	;		Purpose:	16 bit unsigned divide
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+              	;	Actually calculates HL / BC
+              	
+8336:         	linkHeader:
+8336:         	link0:
+8336: 1900    	    dw link1-link0
+8338: 7379732E	 	db "sys.divide",0
+833C: 64697669	
+8340: 646500  	
+8343: C5      		push 	bc
+8344: D5      		push 	de
+8345: EB      		ex 		de,hl
+8346: 69      		ld 		l,c
+8347: 60      		ld 		h,b
+8348: CD6883  		call 	DIVDivideMod16
+834B: EB      		ex 		de,hl
+834C: D1      		pop 	de
+834D: C1      		pop 	bc
+834E: C9      		ret
+              	
+              	;	Actually calculates HL % BC
+              	
+834F:         	link1:
+834F: 4400    	    dw link2-link1
+8351: 7379732E	 	db "sys.modulus",0
+8355: 6D6F6475	
+8359: 6C757300	
+835D: C5      		push 	bc
+835E: D5      		push 	de
+835F: EB      		ex 		de,hl
+8360: 69      		ld 		l,c
+8361: 60      		ld 		h,b
+8362: CD6883  		call 	DIVDivideMod16
+8365: D1      		pop 	de
+8366: C1      		pop 	bc
+8367: C9      		ret
+              	
+              	; *********************************************************************************
+              	;
+              	;			Calculates DE / HL. On exit DE = result, HL = remainder
+              	;
+              	; *********************************************************************************
+              	
+8368:         	DIVDivideMod16:
+              	
+8368: C5      		push 	bc
+8369: 42      		ld 		b,d 				; DE
+836A: 4B      		ld 		c,e
+836B: EB      		ex 		de,hl
+836C: 210000  		ld 		hl,0
+836F: 78      		ld 		a,b
+8370: 0608    		ld 		b,8
+8372:         	Div16_Loop1:
+8372: 17      		rla
+8373: ED6A    		adc 	hl,hl
+8375: ED52    		sbc 	hl,de
+8377: 3001    		jr 		nc,Div16_NoAdd1
+8379: 19      		add 	hl,de
+837A:         	Div16_NoAdd1:
+837A: 10F6    		djnz 	Div16_Loop1
+837C: 17      		rla
+837D: 2F      		cpl
+837E: 47      		ld 		b,a
+837F: 79      		ld 		a,c
+8380: 48      		ld 		c,b
+8381: 0608    		ld 		b,8
+8383:         	Div16_Loop2:
+8383: 17      		rla
+8384: ED6A    		adc 	hl,hl
+8386: ED52    		sbc 	hl,de
+8388: 3001    		jr 		nc,Div16_NoAdd2
+838A: 19      		add 	hl,de
+838B:         	Div16_NoAdd2:
+838B: 10F6    		djnz 	Div16_Loop2
+838D: 17      		rla
+838E: 2F      		cpl
+838F: 51      		ld 		d,c
+8390: 5F      		ld 		e,a
+8391: C1      		pop 	bc
+8392: C9      		ret
+              	
+              	
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		multiply.asm
+              	;		Purpose:	16 bit unsigned multiply
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+              	; 	calculate HL = HL * BC
+              	
+8393:         	link2:
+8393: 3100    	    dw link3-link2
+8395: 7379732E	 	db "sys.multiply",0
+8399: 6D756C74	
+839D: 69706C79	
+83A1: 00      	
+83A2: D5      			push 	de
+83A3: 50      			ld 		d,b
+83A4: 59      			ld 		e,c
+83A5: CDAA83  			call 	MULTMultiply16
+83A8: D1      			pop 	de
+83A9: C9      			ret
+              	
+              	; *********************************************************************************
+              	;
+              	;								Does HL = HL * DE
+              	;
+              	; *********************************************************************************
+              	
+83AA:         	MULTMultiply16:
+83AA: C5      			push 	bc
+83AB: D5      			push 	de
+83AC: 44      			ld 		b,h 							; get multipliers in DE/BC
+83AD: 4D      			ld 		c,l
+83AE: 210000  			ld 		hl,0 							; zero total
+83B1:         	__Core__Mult_Loop:
+83B1: CB41    			bit 	0,c 							; lsb of shifter is non-zero
+83B3: 2801    			jr 		z,__Core__Mult_Shift
+83B5: 19      			add 	hl,de 							; add adder to total
+83B6:         	__Core__Mult_Shift:
+83B6: CB38    			srl 	b 								; shift BC right.
+83B8: CB19    			rr 		c
+83BA: EB      			ex 		de,hl 							; shift DE left
+83BB: 29      			add 	hl,hl
+83BC: EB      			ex 		de,hl
+83BD: 78      			ld 		a,b 							; loop back if BC is nonzero
+83BE: B1      			or 		c
+83BF: 20F0    			jr 		nz,__Core__Mult_Loop
+83C1: D1      			pop 	de
+83C2: C1      			pop 	bc
+83C3: C9      			ret
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		bitwise.asm
+              	;		Purpose:	16 bit bitwise operations
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+83C4:         	link3:
+83C4: 1400    	    dw link4-link3
+83C6: 73797374	 	db "system.and",0
+83CA: 656D2E61	
+83CE: 6E6400  	
+83D1: 7C      			ld 		a,h
+83D2: A0      			and 	b
+83D3: 67      			ld 		h,a
+83D4: 7D      			ld 		a,l
+83D5: A1      			and 	c
+83D6: 6F      			ld 		l,a
+83D7: C9      			ret
+              	
+83D8:         	link4:
+83D8: 1400    	    dw link5-link4
+83DA: 73797374	 	db "system.xor",0
+83DE: 656D2E78	
+83E2: 6F7200  	
+83E5: 7C      			ld 		a,h
+83E6: A8      			xor 	b
+83E7: 67      			ld 		h,a
+83E8: 7D      			ld 		a,l
+83E9: A9      			xor 	c
+83EA: 6F      			ld 		l,a
+83EB: C9      			ret
+              	
+83EC:         	link5:
+83EC: 8C00    	    dw link6-link5
+83EE: 73797374	 	db "system.and",0
+83F2: 656D2E61	
+83F6: 6E6400  	
+83F9: 7C      			ld 		a,h
+83FA: B0      			or 		b
+83FB: 67      			ld 		h,a
+83FC: 7D      			ld 		a,l
+83FD: B1      			or 		c
+83FE: 6F      			ld 		l,a
+83FF: C9      			ret
+              	
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		screen48k.asm
+              	;		Purpose:	Hardware interface to Spectrum display, standard but with
+              	;					sprites enabled.
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+              	; *********************************************************************************
+              	;
+              	;						Call the SetMode for the Spectrum 48k
+              	;
+              	; *********************************************************************************
+              	
+8400:         	GFXInitialise48k:
+8400: F5      			push 	af 									; save registers
+8401: C5      			push 	bc
+              	
+8402: 013B12  			ld 		bc,$123B 							; Layer 2 access port
+8405: 3E00    			ld 		a,0 								; disable Layer 2
+8407: ED79    			out 	(c),a
+8409: ED911503			db 		$ED,$91,$15,$3						; Disable LowRes but enable Sprites
+              	
+840D: 210040  			ld 		hl,$4000 							; clear pixel memory
+8410: 3600    	__cs1:	ld 		(hl),0
+8412: 23      			inc 	hl
+8413: 7C      			ld 		a,h
+8414: FE58    			cp 		$58
+8416: 20F8    			jr 		nz,__cs1
+8418: 3647    	__cs2:	ld 		(hl),$47							; clear attribute memory
+841A: 23      			inc 	hl
+841B: 7C      			ld 		a,h
+841C: FE5B    			cp 		$5B
+841E: 20F8    			jr 		nz,__cs2
+8420: AF      			xor 	a 									; border off
+8421: D3FE    			out 	($FE),a
+8423: C1      			pop 	bc
+8424: F1      			pop 	af
+8425: 212018  			ld 		hl,$1820 							; H = 24,L = 32, screen extent
+8428: 112C84  			ld 		de,GFXPrintCharacter48k
+842B: C9      			ret
+              	
+              	; *********************************************************************************
+              	;
+              	;				Write a character E on the screen at HL, in colour D
+              	;
+              	; *********************************************************************************
+              	
+842C:         	GFXPrintCharacter48k:
+842C: F5      			push 	af 									; save registers
+842D: C5      			push 	bc
+842E: D5      			push 	de
+842F: E5      			push 	hl
+              	
+8430: 43      			ld 		b,e 								; character in B
+8431: 7C      			ld 		a,h 								; check range.
+8432: FE03    			cp 		3
+8434: 303D    			jr 		nc,__ZXWCExit
+              	;
+              	;		work out attribute position
+              	;
+8436: E5      			push 	hl 									; save position.
+8437: 7C      			ld 		a,h
+8438: C658    			add 	$58
+843A: 67      			ld 		h,a
+              	
+843B: 7A      			ld 		a,d 								; get current colour
+843C: E607    			and 	7  									; mask 0..2
+843E: F640    			or 		$40  								; make bright
+8440: 77      			ld 		(hl),a 								; store it.
+8441: E1      			pop 	hl
+              	;
+              	;		calculate screen position => HL
+              	;
+8442: D5      			push 	de
+8443: EB      			ex 		de,hl
+8444: 6B      			ld 		l,e 								; Y5 Y4 Y3 X4 X3 X2 X1 X0
+8445: 7A      			ld 		a,d
+8446: E603    			and 	3
+8448: 87      			add 	a,a
+8449: 87      			add 	a,a
+844A: 87      			add 	a,a
+844B: F640    			or 		$40
+844D: 67      			ld 		h,a
+844E: D1      			pop 	de
+              	;
+              	;		char# 32-127 to font address => DE
+              	;
+844F: E5      			push 	hl
+8450: 78      			ld 		a,b 								; get character
+8451: E67F    			and 	$7F 								; bits 0-6 only.
+8453: D620    			sub 	32
+8455: 6F      			ld 		l,a 								; put in HL
+8456: 2600    			ld 		h,0
+8458: 29      			add 	hl,hl 								; x 8
+8459: 29      			add 	hl,hl
+845A: 29      			add 	hl,hl
+845B: ED5B8087			ld 		de,(SIFontBase) 					; add the font base.
+845F: 19      			add 	hl,de
+8460: EB      			ex 		de,hl 								; put in DE (font address)
+8461: E1      			pop 	hl
+              	;
+              	;		copy font data to screen position.
+              	;
+8462: 78      			ld 		a,b
+8463: 0608    			ld 		b,8 								; copy 8 characters
+8465: 0E00    			ld 		c,0 								; XOR value 0
+8467: CB7F    			bit 	7,a 								; is the character reversed
+8469: 2801    			jr 		z,__ZXWCCopy
+846B: 0D      			dec 	c 									; C is the XOR mask now $FF
+846C:         	__ZXWCCopy:
+846C: 1A      			ld 		a,(de)								; get font data
+846D: A9      			xor 	c 									; xor with reverse
+846E: 77      			ld 		(hl),a 								; write back
+846F: 24      			inc 	h 									; bump pointers
+8470: 13      			inc 	de
+8471: 10F9    			djnz 	__ZXWCCopy 							; do B times.
+8473:         	__ZXWCExit:
+8473: E1      			pop 	hl 									; restore and exit
+8474: D1      			pop 	de
+8475: C1      			pop 	bc
+8476: F1      			pop 	af
+8477: C9      			ret
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		graphics.asm
+              	;		Purpose:	General screen I/O routines
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+8478:         	link6:
+8478: 1400    	    dw link7-link6
+847A: 73637265	 	db "screen.setmode",1
+847E: 656E2E73	
+8482: 65746D6F	
+8486: 646501  	
+8489: C3B384  			jp 		GFXMode
+              	
+848C:         	link7:
+848C: 1200    	    dw link8-link7
+848E: 73637265	 	db "screen.write",2
+8492: 656E2E77	
+8496: 72697465	
+849A: 02      	
+849B: C3E484  			jp 		GFXWriteCharacter
+              	
+849E:         	link8:
+849E: E701    	    dw link9-link8
+84A0: 73637265	 	db "screen.writehex",2
+84A4: 656E2E77	
+84A8: 72697465	
+84AC: 68657802	
+84B0: C3F784  			jp 		GFXWriteHexWord
+              	
+              	; *********************************************************************************
+              	;
+              	;								Set Graphics Mode to L
+              	;
+              	; *********************************************************************************
+              	
+84B3:         	GFXMode:
+84B3: C5      			push 	bc
+84B4: D5      			push 	de
+84B5: E5      			push 	hl
+84B6: 2D      			dec 	l 									; L = 1 mode layer2
+84B7: 2808    			jr 		z,__GFXLayer2
+84B9: 2D      			dec 	l
+84BA: 280A    			jr 		z,__GFXLowRes 						; L = 2 mode lowres
+              	
+84BC: CD0084  			call 	GFXInitialise48k					; L = 0 or anything else, 48k mode.
+84BF: 1808    			jr 		__GFXConfigure
+              	
+84C1:         	__GFXLayer2:
+84C1: CD2985  			call 	GFXInitialiseLayer2
+84C4: 1803    			jr 		__GFXConfigure
+              	
+84C6:         	__GFXLowRes:
+84C6: CDE085  			call 	GFXInitialiseLowRes
+              	
+84C9:         	__GFXConfigure:
+84C9: 7D      			ld 		a,l 								; save screen size
+84CA: 327487  			ld 		(SIScreenWidth),a
+84CD: 7C      			ld 		a,h
+84CE: 327887  			ld 		(SIScreenHeight),a
+84D1: EB      			ex 		de,hl 								; save driver
+84D2: 228487  			ld 		(SIScreenDriver),hl
+              	
+84D5: 6A      			ld 		l,d 								; put sizes in HL DE
+84D6: 2600    			ld 		h,0
+84D8: 1600    			ld 		d,0
+84DA: CDAA83  			call 	MULTMultiply16 						; multiply to get size and store.
+84DD: 227C87  			ld 		(SIScreenSize),hl
+              	
+84E0: E1      			pop 	hl
+84E1: D1      			pop 	de
+84E2: C1      			pop 	bc
+84E3: C9      			ret
+              	
+              	; *********************************************************************************
+              	;
+              	;		Write character D (colour) E (character) to position HL.
+              	;
+              	; *********************************************************************************
+              	
+84E4:         	GFXWriteCharacter:
+84E4: F5      			push 	af
+84E5: C5      			push 	bc
+84E6: D5      			push 	de
+84E7: E5      			push 	hl
+84E8: 01F284  			ld 		bc,__GFXWCExit
+84EB: C5      			push 	bc
+84EC: ED4B8487			ld 		bc,(SIScreenDriver)
+84F0: C5      			push 	bc
+84F1: C9      			ret
+84F2:         	__GFXWCExit:
+84F2: E1      			pop 	hl
+84F3: D1      			pop 	de
+84F4: C1      			pop 	bc
+84F5: F1      			pop 	af
+84F6: C9      			ret
+              	
+              	; *********************************************************************************
+              	;
+              	;						Write hex word DE at position HL
+              	;
+              	; *********************************************************************************
+              	
+84F7:         	GFXWriteHexWord:
+84F7: 3E05    			ld 		a,5
+84F9:         	GFXWriteHexWordA:
+84F9: C5      			push 	bc
+84FA: D5      			push 	de
+84FB: E5      			push 	hl
+84FC: 4F      			ld 		c,a
+84FD: 7A      			ld 		a,d
+84FE: D5      			push 	de
+84FF: CD0B85  			call 	__GFXWHByte
+8502: D1      			pop 	de
+8503: 7B      			ld 		a,e
+8504: CD0B85  			call	__GFXWHByte
+8507: E1      			pop 	hl
+8508: D1      			pop 	de
+8509: C1      			pop 	bc
+850A: C9      			ret
+              	
+850B:         	__GFXWHByte:
+850B: F5      			push 	af
+850C: CB0F    			rrc 	a
+850E: CB0F    			rrc		a
+8510: CB0F    			rrc 	a
+8512: CB0F    			rrc 	a
+8514: CD1885  			call 	__GFXWHNibble
+8517: F1      			pop 	af
+8518:         	__GFXWHNibble:
+8518: 51      			ld 		d,c
+8519: E60F    			and 	15
+851B: FE0A    			cp 		10
+851D: 3802    			jr 		c,__GFXWHDigit
+851F: C607    			add		a,7
+8521:         	__GFXWHDigit:
+8521: C630    			add 	a,48
+8523: 5F      			ld 		e,a
+8524: CDE484  			call 	GFXWriteCharacter
+8527: 23      			inc 	hl
+8528: C9      			ret
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		screen_layer2.asm
+              	;		Purpose:	Layer 2 console interface, sprites enabled, no shadow.
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+              	; *********************************************************************************
+              	;
+              	;								Clear Layer 2 Display.
+              	;
+              	; *********************************************************************************
+              	
+              	
+8529:         	GFXInitialiseLayer2:
+8529: F5      			push 	af
+852A: C5      			push 	bc
+852B: D5      			push 	de
+852C: ED911503			db 		$ED,$91,$15,$3						; Disable LowRes but enable Sprites
+              	
+8530: 1E02    			ld 		e,2 								; 3 banks to erase
+8532:         	L2PClear:
+8532: 7B      			ld 		a,e 								; put bank number in bits 6/7
+8533: CB0F    			rrc 	a
+8535: CB0F    			rrc 	a
+8537: F603    			or 		2+1 								; shadow on, visible, enable write paging
+8539: 013B12  			ld 		bc,$123B 							; out to layer 2 port
+853C: ED79    			out 	(c),a
+853E: 210040  			ld 		hl,$4000 							; erase the bank to $00
+8541:         	L2PClearBank: 										; assume default palette :)
+8541: 2B      			dec 	hl
+8542: 3600    			ld 		(hl),$00
+8544: 7C      			ld 		a,h
+8545: B5      			or 		l
+8546: 20F9    			jr		nz,L2PClearBank
+8548: 1D      			dec 	e
+8549: F23285  			jp 		p,L2PClear
+              	
+854C: AF      			xor 	a
+854D: D3FE    			out 	($FE),a
+              	
+854F: D1      			pop 	de
+8550: C1      			pop 	bc
+8551: F1      			pop 	af
+8552: 212018  			ld 		hl,$1820 							; still 32 x 24
+8555: 115985  			ld 		de,GFXPrintCharacterLayer2
+8558: C9      			ret
+              	;
+              	;		Print Character E, colour D, position HL
+              	;
+8559:         	GFXPrintCharacterLayer2:
+8559: F5      			push 	af
+855A: C5      			push 	bc
+855B: D5      			push 	de
+855C: E5      			push 	hl
+855D: DDE5    			push 	ix
+              	
+855F: 43      			ld 		b,e 								; save A temporarily
+8560: 78      			ld 		a,b
+8561: E67F    			and 	$7F
+8563: FE20    			cp 		32
+8565: 3872    			jr 		c,__L2Exit 							; check char in range
+8567: 7C      			ld 		a,h
+8568: FE03    			cp 		3
+856A: 306D    			jr 		nc,__L2Exit 						; check position in range
+856C: 78      			ld 		a,b
+              	
+856D: F5      			push 	af
+856E: AF      			xor 	a 									; convert colour in C to palette index
+856F: CB42    			bit 	0,d 								; (assumes standard palette)
+8571: 2802    			jr 		z,__L2Not1
+8573: F603    			or 		$03
+8575:         	__L2Not1:
+8575: CB52    			bit 	2,d
+8577: 2802    			jr 		z,__L2Not2
+8579: F61C    			or 		$1C
+857B:         	__L2Not2:
+857B: CB4A    			bit 	1,d
+857D: 2802    			jr 		z,__L2Not3
+857F: F6C0    			or 		$C0
+8581:         	__L2Not3:
+8581: 4F      			ld 		c,a 								; C is foreground
+8582: 0600    			ld 		b,0									; B is xor flipper, initially zero
+8584: F1      			pop 	af 									; restore char
+              	
+8585: E5      			push 	hl
+8586: CB7F    			bit 	7,a 								; adjust background bit on bit 7
+8588: 2802    			jr 		z,__L2NotCursor
+858A: 06FF    			ld 		b,$FF 								; light grey is cursor
+858C:         	__L2NotCursor:
+858C: E67F    			and 	$7F 								; offset from space
+858E: D620    			sub 	$20
+8590: 6F      			ld 		l,a 								; put into HL
+8591: 2600    			ld 		h,0
+8593: 29      			add 	hl,hl 								; x 8
+8594: 29      			add 	hl,hl
+8595: 29      			add 	hl,hl
+              	
+8596: E5      			push 	hl 									; transfer to IX
+8597: DDE1    			pop 	ix
+8599: E1      			pop 	hl
+              	
+859A: C5      			push 	bc 									; add the font base to it.
+859B: ED4B8087			ld 		bc,(SIFontBase)
+859F: DD09    			add 	ix,bc
+85A1: C1      			pop 	bc
+              			;
+              			;		figure out the correct bank.
+              			;
+85A2: C5      			push 	bc
+85A3: 7C      			ld  	a,h 								; this is the page number.
+85A4: CB0F    			rrc 	a
+85A6: CB0F    			rrc 	a
+85A8: E6C0    			and 	$C0 								; in bits 6 & 7
+85AA: F603    			or 		$03 								; shadow on, visible, enable write pagin.
+85AC: 013B12  			ld 		bc,$123B 							; out to layer 2 port
+85AF: ED79    			out 	(c),a
+85B1: C1      			pop 	bc
+              			;
+              			; 		now figure out position in bank
+              			;
+85B2: EB      			ex 		de,hl
+85B3: 6B      			ld 		l,e
+85B4: 2600    			ld 		h,0
+85B6: 29      			add 	hl,hl
+85B7: 29      			add 	hl,hl
+85B8: 29      			add 	hl,hl
+85B9: CB24    			sla 	h
+85BB: CB24    			sla 	h
+85BD: CB24    			sla 	h
+              	
+85BF: 1E08    			ld 		e,8 								; do 8 rows
+85C1:         	__L2Outer:
+85C1: E5      			push 	hl 									; save start
+85C2: 1608    			ld 		d,8 								; do 8 columns
+85C4: DD7E00  			ld 		a,(ix+0) 							; get the bit pattern
+85C7: A8      			xor 	b 									; maybe flip it ?
+85C8: DD23    			inc 	ix
+85CA:         	__L2Loop:
+85CA: 3600    			ld 		(hl),0 								; background
+85CC: 87      			add 	a,a 								; shift pattern left
+85CD: 3001    			jr 		nc,__L2NotSet
+85CF: 71      			ld 		(hl),c 								; if MSB was set, overwrite with fgr
+85D0:         	__L2NotSet:
+85D0: 23      			inc 	hl
+85D1: 15      			dec 	d 									; do a row
+85D2: 20F6    			jr 		nz,	__L2Loop
+85D4: E1      			pop 	hl 									; restore, go 256 bytes down.
+85D5: 24      			inc 	h
+85D6: 1D      			dec 	e 									; do 8 rows
+85D7: 20E8    			jr 		nz,__L2Outer
+85D9:         	__L2Exit:
+85D9: DDE1    			pop 	ix
+85DB: E1      			pop 	hl
+85DC: D1      			pop 	de
+85DD: C1      			pop 	bc
+85DE: F1      			pop 	af
+85DF: C9      			ret
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		screen_lores.asm
+              	;		Purpose:	LowRes console interface, sprites enabled.
+              	;		Date : 		28th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+              	; *********************************************************************************
+              	;
+              	;								Clear LowRes Display.
+              	;
+              	; *********************************************************************************
+              	
+85E0:         	GFXInitialiseLowRes:
+85E0: F5      			push 	af
+85E1: C5      			push 	bc
+85E2: D5      			push 	de
+              	
+85E3: ED911583			db 		$ED,$91,$15,$83						; Enable LowRes and enable Sprites
+85E7: AF      			xor 	a 									; layer 2 off.
+85E8: 013B12  			ld 		bc,$123B 							; out to layer 2 port
+85EB: ED79    			out 	(c),a
+              	
+85ED: 210040  			ld 		hl,$4000 							; erase the bank to $00
+85F0: 110060  			ld 		de,$6000
+85F3:         	LowClearScreen: 									; assume default palette :)
+85F3: AF      			xor 	a
+85F4: 77      			ld 		(hl),a
+85F5: 12      			ld 		(de),a
+85F6: 23      			inc 	hl
+85F7: 13      			inc 	de
+85F8: 7C      			ld 		a,h
+85F9: FE58    			cp 		$58
+85FB: 20F6    			jr		nz,LowClearScreen
+85FD: AF      			xor 	a
+85FE: D3FE    			out 	($FE),a
+8600: D1      			pop 	de
+8601: C1      			pop 	bc
+8602: F1      			pop 	af
+8603: 21100C  			ld 		hl,$0C10 							; resolution is 16x12 chars
+8606: 110A86  			ld 		de,GFXPrintCharacterLowRes
+8609: C9      			ret
+              	;
+              	;		Print Character E Colour D @ HL
+              	;
+860A:         	GFXPrintCharacterLowRes:
+860A: F5      			push 	af
+860B: C5      			push 	bc
+860C: D5      			push 	de
+860D: E5      			push 	hl
+860E: DDE5    			push 	ix
+              	
+8610: 43      			ld 		b,e 								; save character in B
+8611: 7B      			ld 		a,e
+8612: E67F    			and 	$7F
+8614: FE20    			cp 		32
+8616: 3866    			jr 		c,__LPExit
+              	
+8618: 29      			add 	hl,hl
+8619: 29      			add 	hl,hl
+861A: 7C      			ld	 	a,h 								; check in range 192*4 = 768
+861B: FE03    			cp 		3
+861D: 305F    			jr 		nc,__LPExit
+              	
+861F: 7A      			ld 		a,d 								; only lower 3 bits of colour
+8620: E607    			and 	7
+8622: 4F      			ld 		c,a 								; C is foreground
+              	
+8623: E5      			push 	hl
+8624: 78      			ld 		a,b 								; get char back
+8625: 0600    			ld 		b,0 								; B = no flip colour.
+8627: CB7F    			bit 	7,a
+8629: 2801    			jr 		z,__LowNotReverse 					; but 7 set, flip is $FF
+862B: 05      			dec 	b
+862C:         	__LowNotReverse:
+862C: E67F    			and 	$7F 								; offset from space
+862E: D620    			sub 	$20
+8630: 6F      			ld 		l,a 								; put into HL
+8631: 2600    			ld 		h,0
+8633: 29      			add 	hl,hl 								; x 8
+8634: 29      			add 	hl,hl
+8635: 29      			add 	hl,hl
+              	
+8636: E5      			push 	hl 									; transfer to IX
+8637: DDE1    			pop 	ix
+              	
+8639: C5      			push 	bc 									; add the font base to it.
+863A: ED4B8087			ld 		bc,(SIFontBase)
+863E: DD09    			add 	ix,bc
+8640: C1      			pop 	bc
+8641: E1      			pop 	hl
+8642: EB      			ex 		de,hl
+8643: 7B      			ld 		a,e 								; put DE => HL
+8644: E6C0    			and 	192 								; these are part of Y
+8646: 6F      			ld 		l,a  								; Y multiplied by 4 then 32 = 128
+8647: 62      			ld 		h,d
+8648: 29      			add 	hl,hl
+8649: 29      			add 	hl,hl
+864A: 29      			add 	hl,hl
+864B: 29      			add 	hl,hl
+864C: CBF4    			set 	6,h 								; put into $4000 range
+              	
+864E: 3E3C    			ld 		a,15*4 								; mask for X, which has been premultiplied.
+8650: A3      			and 	e 									; and with E, gives X position
+8651: 87      			add 	a,a 								; now multiplied by 8.
+8652: 5F      			ld 		e,a 								; DE is x offset.
+8653: 1600    			ld 		d,0
+              	
+8655: 19      			add 	hl,de
+8656: 7C      			ld 		a,h
+8657: FE58    			cp 		$58 								; need to be shifted to 2nd chunk ?
+8659: 3804    			jr 		c,__LowNotLower2
+865B: 110008  			ld 		de,$0800
+865E: 19      			add 	hl,de
+865F:         	__LowNotLower2:
+865F: 1E08    			ld 		e,8 								; do 8 rows
+8661:         	__LowOuter:
+8661: E5      			push 	hl 									; save start
+8662: 1608    			ld 		d,8 								; do 8 columns
+8664: DD7E00  			ld 		a,(ix+0) 							; get the bit pattern
+8667: A8      			xor 	b
+8668: DD23    			inc 	ix
+866A:         	__LowLoop:
+866A: 3600    			ld 		(hl),0 								; background
+866C: 87      			add 	a,a 								; shift pattern left
+866D: 3001    			jr 		nc,__LowNotSet
+866F: 71      			ld 		(hl),c 								; if MSB was set, overwrite with fgr
+8670:         	__LowNotSet:
+8670: 2C      			inc 	l
+8671: 15      			dec 	d 									; do a row
+8672: 20F6    			jr 		nz,	__LowLoop
+8674: E1      			pop 	hl 									; restore, go 256 bytes down.
+8675: D5      			push 	de
+8676: 118000  			ld 		de,128
+8679: 19      			add 	hl,de
+867A: D1      			pop 	de
+867B: 1D      			dec 	e 									; do 8 rows
+867C: 20E3    			jr 		nz,__LowOuter
+867E:         	__LPExit:
+867E: DDE1    			pop 	ix
+8680: E1      			pop 	hl
+8681: D1      			pop 	de
+8682: C1      			pop 	bc
+8683: F1      			pop 	af
+8684: C9      			ret
+              	
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	;
+              	;		File:		keyboard.asm
+              	;		Purpose:	Spectrum Keyboard Interface
+              	;		Date : 		27th December 2018
+              	;		Author:		paul@robsons.org.uk
+              	;
+              	; *********************************************************************************
+              	; *********************************************************************************
+              	
+8685:         	link9:
+8685: DD00    	    dw link10-link9
+8687: 696E6B65	 	db "inkey",1
+868B: 7901    	
+868D: CD9586  			call 	IOScanKeyboard 						; read keyboard
+8690: 77      			ld 		(hl),a 								; copy into variable
+8691: 23      			inc 	hl
+8692: 3600    			ld 		(hl),$00	 						; zero upper byte.
+8694: C9      			ret
+              	
+              	; *********************************************************************************
+              	;
+              	;			Scan the keyboard, return currently pressed key code in A
+              	;
+              	; *********************************************************************************
+              	
+8695:         	IOScanKeyboard:
+8695: C5      			push 	bc
+8696: D5      			push 	de
+8697: E5      			push 	hl
+              	
+8698: 21EA86  			ld 		hl,__kr_no_shift_table 				; firstly identify shift state.
+              	
+869B: 0EFE    			ld 		c,$FE 								; check CAPS SHIFT (emulator : left shift)
+869D: 06FE    			ld 		b,$FE
+869F: ED78    			in 		a,(c)
+86A1: CB47    			bit 	0,a
+86A3: 2005    			jr 		nz,__kr1
+86A5: 211287  			ld 		hl,__kr_shift_table
+86A8: 180B    			jr 		__kr2
+86AA:         	__kr1:
+86AA: 067F    			ld 		b,$7F 								; check SYMBOL SHIFT (emulator : right shift)
+86AC: ED78    			in 		a,(c)
+86AE: CB4F    			bit 	1,a
+86B0: 2003    			jr 		nz,__kr2
+86B2: 211287  			ld 		hl,__kr_symbol_shift_table
+86B5:         	__kr2:
+              	
+86B5: 1EFE    			ld 		e,$FE 								; scan pattern.
+86B7: 7B      	__kr3:	ld 		a,e 								; work out the mask, so we don't detect shift keys
+86B8: 161E    			ld 		d,$1E 								; $FE row, don't check the least significant bit.
+86BA: FEFE    			cp 		$FE
+86BC: 2808    			jr 		z,___kr4
+86BE: 161D    			ld 		d,$01D 								; $7F row, don't check the 2nd least significant bit
+86C0: FE7F    			cp 		$7F
+86C2: 2802    			jr 		z,___kr4
+86C4: 161F    			ld 		d,$01F 								; check all bits.
+86C6:         	___kr4:
+86C6: 43      			ld 		b,e 								; scan the keyboard
+86C7: 0EFE    			ld 		c,$FE
+86C9: ED78    			in 		a,(c)
+86CB: 2F      			cpl 										; make that active high.
+86CC: A2      			and 	d  									; and with check value.
+86CD: 2011    			jr 		nz,__kr_keypressed 					; exit loop if key pressed.
+              	
+86CF: 23      			inc 	hl 									; next set of keyboard characters
+86D0: 23      			inc 	hl
+86D1: 23      			inc 	hl
+86D2: 23      			inc 	hl
+86D3: 23      			inc 	hl
+              	
+86D4: 7B      			ld 		a,e 								; get pattern
+86D5: 87      			add 	a,a 								; shift left
+86D6: F601    			or 		1 									; set bit 1.
+86D8: 5F      			ld 		e,a
+              	
+86D9: FEFF    			cp 		$FF 								; finished when all 1's.
+86DB: 20DA    			jr 		nz,__kr3
+86DD: AF      			xor 	a
+86DE: 1806    			jr 		__kr_exit 							; no key found, return with zero.
+              	;
+86E0:         	__kr_keypressed:
+86E0: 23      			inc 	hl  								; shift right until carry set
+86E1: 1F      			rra
+86E2: 30FC    			jr 		nc,__kr_keypressed
+86E4: 2B      			dec 	hl 									; undo the last inc hl
+86E5: 7E      			ld 		a,(hl) 								; get the character number.
+86E6:         	__kr_exit:
+86E6: E1      			pop 	hl
+86E7: D1      			pop 	de
+86E8: C1      			pop 	bc
+86E9: C9      			ret
+              	
+              	; *********************************************************************************
+              	;	 						Keyboard Mapping Tables
+              	; *********************************************************************************
+              	;
+              	;	$FEFE-$7FFE scan, bit 0-4, active low
+              	;
+              	;	3:Abort (Shift+Q) 8:Backspace 13:Return
+              	;	27:Break 32-127: Std ASCII all L/C
+              	;
+86EA:         	__kr_no_shift_table:
+86EA: 007A7863			db 		0,  'z','x','c','v',			'a','s','d','f','g'
+86EE: 76617364	
+86F2: 6667    	
+86F4: 71776572			db 		'q','w','e','r','t',			'1','2','3','4','5'
+86F8: 74313233	
+86FC: 3435    	
+86FE: 30393837			db 		'0','9','8','7','6',			'p','o','i','u','y'
+8702: 36706F69	
+8706: 7579    	
+8708: 0D6C6B6A			db 		13, 'l','k','j','h',			' ', 0, 'm','n','b'
+870C: 6820006D	
+8710: 6E62    	
+              	
+8712:         	__kr_shift_table:
+8712:         	__kr_symbol_shift_table:
+8712: 003A003F			db 		 0, ':', 0,  '?','/',			'~','|','\','{','}'
+8716: 2F7E7C5C	
+871A: 7B7D    	
+871C: 0300003C			db 		 3,  0,  0  ,'<','>',			'!','@','#','$','%'
+8720: 3E214023	
+8724: 2425    	
+8726: 5F292827			db 		'_',')','(',"'",'&',			'"',';', 0, ']','['
+872A: 26223B00	
+872E: 5D5B    	
+8730: 1B3D2B2D			db 		27, '=','+','-','^',			' ', 0, '.',',','*'
+8734: 5E20002E	
+8738: 2C2A    	
+              	
+873A: 003A003F			db 		0,  ':',0  ,'?','/',			'~','|','\','{','}'
+873E: 2F7E7C5C	
+8742: 7B7D    	
+8744: 0300003C			db 		3,  0,  0  ,'<','>',			16,17,18,19,20
+8748: 3E101112	
+874C: 1314    	
+874E: 08291716			db 		8, ')',23,  22, 21,				'"',';', 0, ']','['
+8752: 15223B00	
+8756: 5D5B    	
+8758: 1B3D2B2D			db 		27, '=','+','-','^',			' ', 0, '.',',','*'
+875C: 5E20002E	
+8760: 2C2A    	
+8762:         	link10:
+8762: 0000    	    dw 0
+              		include "common/data.asm"
+              	; ***************************************************************************************
+              	; ***************************************************************************************
+              	;
+              	;		Name : 		data.asm
+              	;		Author :	Paul Robson (paul@robsons.org.uk)
+              	;		Date : 		27th December 2018
+              	;		Purpose :	Data area
+              	;
+              	; ***************************************************************************************
+              	; ***************************************************************************************
+              	
+              	; ***************************************************************************************
+              	;
+              	;								System Information
+              	;
+              	; ***************************************************************************************
+              	
+8764:         	SystemInformation:
+              	
+8764:         	Here:												; +0 	Here 
+8764: 8887    			dw 		FreeMemory
+8766:         	HerePage: 											; +2	Here.Page
+8766: 2200    			db 		FirstCodePage,0
+8768:         	NextFreePage: 										; +4 	Next available code page (2 8k pages/page)
+8768: 24000000			db 		FirstCodePage+2,0,0,0
+876C:         	DisplayInfo: 										; +8 	Display information
+876C: 74870000			dw 		DisplayInformation,0		
+8770:         	StartAddress: 										; +12 	Start Address
+8770: 3480    			dw 		__KernelHalt
+8772:         	StartAddressPage: 									; +14 	Start Page
+8772: 2200    			db 		FirstCodePage,0
+              	
+              	; ***************************************************************************************
+              	;
+              	;							 Display system information
+              	;
+              	; ***************************************************************************************
+              	
+8774:         	DisplayInformation:
+              	
+8774:         	SIScreenWidth: 										; +0 	screen width
+8774: 00000000			db 		0,0,0,0
+8778:         	SIScreenHeight:										; +4 	screen height
+8778: 00000000			db 		0,0,0,0
+877C:         	SIScreenSize:										; +8 	screen size
+877C: 00000000			db 		0,0,0,0
+8780:         	SIFontBase:											; +12 	font in use
+8780: 36800000			dw 		AlternateFont,0
+8784:         	SIScreenDriver:										; +16 	currently selected screen driver
+8784: 00000000			dw 		0,0
+              	
+8788:         	FreeMemory:		
+
+
+; +++ segments +++
+
+#CODE          = $8000 = 32768,  size = $0788 =  1928
+
+; +++ global symbols +++
+
+AlternateFont       = $8036 = 32822          kernel.asm:45
+Boot                = $800C = 32780          kernel.asm:24
+DIVDivideMod16      = $8368 = 33640          __source.asm:50
+DictionaryPage      = $0020 =    32          kernel.asm:13 (unused)
+DisplayInfo         = $876C = 34668          data.asm:26 (unused)
+DisplayInformation  = $8774 = 34676          data.asm:39
+Div16_Loop1         = $8372 = 33650          __source.asm:59
+Div16_Loop2         = $8383 = 33667          __source.asm:73
+Div16_NoAdd1        = $837A = 33658          __source.asm:65
+Div16_NoAdd2        = $838B = 33675          __source.asm:79
+FirstCodePage       = $0022 =    34          kernel.asm:14
+FreeMemory          = $8788 = 34696          data.asm:52
+GFXInitialise48k    = $8400 = 33792          __source.asm:202
+GFXInitialiseLayer2 = $8529 = 34089          __source.asm:466
+GFXInitialiseLowRes = $85E0 = 34272          __source.asm:627
+GFXMode             = $84B3 = 33971          __source.asm:343
+GFXPrintCharacter48k = $842C = 33836          __source.asm:236
+GFXPrintCharacterLayer2 = $8559 = 34137          __source.asm:502
+GFXPrintCharacterLowRes = $860A = 34314          __source.asm:659
+GFXWriteCharacter   = $84E4 = 34020          __source.asm:387
+GFXWriteHexWord     = $84F7 = 34039          __source.asm:410
+GFXWriteHexWordA    = $84F9 = 34041          __source.asm:412 (unused)
+Here                = $8764 = 34660          data.asm:20 (unused)
+HerePage            = $8766 = 34662          data.asm:22 (unused)
+IOScanKeyboard      = $8695 = 34453          __source.asm:786
+L2PClear            = $8532 = 34098          __source.asm:473
+L2PClearBank        = $8541 = 34113          __source.asm:481
+LowClearScreen      = $85F3 = 34291          __source.asm:639
+MULTMultiply16      = $83AA = 33706          __source.asm:118
+NextFreePage        = $8768 = 34664          data.asm:24 (unused)
+SIFontBase          = $8780 = 34688          data.asm:47
+SIScreenDriver      = $8784 = 34692          data.asm:49
+SIScreenHeight      = $8778 = 34680          data.asm:43
+SIScreenSize        = $877C = 34684          data.asm:45
+SIScreenWidth       = $8774 = 34676          data.asm:41
+StackTop            = $7EFC = 32508          kernel.asm:12
+StartAddress        = $8770 = 34672          data.asm:28
+StartAddressPage    = $8772 = 34674          data.asm:30
+SystemInformation   = $8764 = 34660          data.asm:18
+WordListPointer     = $8008 = 32776          kernel.asm:21
+__Core__Mult_Loop   = $83B1 = 33713          __source.asm:124
+__Core__Mult_Shift  = $83B6 = 33718          __source.asm:128
+__GFXConfigure      = $84C9 = 33993          __source.asm:362
+__GFXLayer2         = $84C1 = 33985          __source.asm:355
+__GFXLowRes         = $84C6 = 33990          __source.asm:359
+__GFXWCExit         = $84F2 = 34034          __source.asm:397
+__GFXWHByte         = $850B = 34059          __source.asm:428
+__GFXWHDigit        = $8521 = 34081          __source.asm:442
+__GFXWHNibble       = $8518 = 34072          __source.asm:436
+__KernelHalt        = $8034 = 32820          kernel.asm:42
+__L2Exit            = $85D9 = 34265          __source.asm:603
+__L2Loop            = $85CA = 34250          __source.asm:590
+__L2Not1            = $8575 = 34165          __source.asm:524
+__L2Not2            = $857B = 34171          __source.asm:528
+__L2Not3            = $8581 = 34177          __source.asm:532
+__L2NotCursor       = $858C = 34188          __source.asm:541
+__L2NotSet          = $85D0 = 34256          __source.asm:595
+__L2Outer           = $85C1 = 34241          __source.asm:584
+__LPExit            = $867E = 34430          __source.asm:752
+__LowLoop           = $866A = 34410          __source.asm:736
+__LowNotLower2      = $865F = 34399          __source.asm:728
+__LowNotReverse     = $862C = 34348          __source.asm:688
+__LowNotSet         = $8670 = 34416          __source.asm:741
+__LowOuter          = $8661 = 34401          __source.asm:730
+__ZXWCCopy          = $846C = 33900          __source.asm:298
+__ZXWCExit          = $8473 = 33907          __source.asm:305
+___kr4              = $86C6 = 34502          __source.asm:817
+__cs1               = $8410 = 33808          __source.asm:212
+__cs2               = $8418 = 33816          __source.asm:217
+__kr1               = $86AA = 34474          __source.asm:800
+__kr2               = $86B5 = 34485          __source.asm:806
+__kr3               = $86B7 = 34487          __source.asm:809
+__kr_exit           = $86E6 = 34534          __source.asm:847
+__kr_keypressed     = $86E0 = 34528          __source.asm:841
+__kr_no_shift_table = $86EA = 34538          __source.asm:862
+__kr_shift_table    = $8712 = 34578          __source.asm:868
+__kr_symbol_shift_table = $8712 = 34578          __source.asm:869
+_end                = $8788 = 34696          kernel.asm:14 (unused)
+_size               = $0788 =  1928          kernel.asm:14 (unused)
+link0               = $8336 = 33590          __source.asm:15
+link1               = $834F = 33615          __source.asm:31
+link10              = $8762 = 34658          __source.asm:879
+link2               = $8393 = 33683          __source.asm:102
+link3               = $83C4 = 33732          __source.asm:151
+link4               = $83D8 = 33752          __source.asm:162
+link5               = $83EC = 33772          __source.asm:173
+link6               = $8478 = 33912          __source.asm:322
+link7               = $848C = 33932          __source.asm:327
+link8               = $849E = 33950          __source.asm:332
+link9               = $8685 = 34437          __source.asm:771
+linkHeader          = $8336 = 33590          __source.asm:14
+
+
+total time: 0.0045 sec.
+no errors

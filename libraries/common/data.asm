@@ -25,11 +25,9 @@ NextFreePage: 										; +4 	Next available code page (2 8k pages/page)
 		db 		FirstCodePage+2,0,0,0
 DisplayInfo: 										; +8 	Display information
 		dw 		DisplayInformation,0		
-Parameter: 											; +12 	Third Parameter used in some functions.
-		dw 		0,0
-StartAddress: 										; +16 	Start Address
+StartAddress: 										; +12 	Start Address
 		dw 		__KernelHalt
-StartAddressPage: 									; +20 	Start Page
+StartAddressPage: 									; +14 	Start Page
 		db 		FirstCodePage,0
 
 ; ***************************************************************************************
@@ -40,13 +38,15 @@ StartAddressPage: 									; +20 	Start Page
 
 DisplayInformation:
 
-__DIScreenWidth: 									; +0 	screen width
+SIScreenWidth: 										; +0 	screen width
 		db 		0,0,0,0
-__DIScreenHeight:									; +4 	screen height
+SIScreenHeight:										; +4 	screen height
 		db 		0,0,0,0
-__DIFontBase:										; font in use
-		dw 		AlternateFont
+SIScreenSize:										; +8 	screen size
+		db 		0,0,0,0
+SIFontBase:											; +12 	font in use
+		dw 		AlternateFont,0
+SIScreenDriver:										; +16 	currently selected screen driver
+		dw 		0,0
 
 FreeMemory:		
-		org 	$C000
-		db 		0 									; start of dictionary, which is empty.

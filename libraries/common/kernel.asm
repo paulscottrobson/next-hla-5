@@ -13,30 +13,31 @@ StackTop = $7EFC 									;      -$7EFC Top of stack
 DictionaryPage = $20 								; $20 = dictionary page
 FirstCodePage = $22 								; $22 = code page.
 
-		opt 	zxnextreg
 		org 	$8000 								; $8000 boot.
 		jr 		Boot
 		org 	$8004 								; $8004 address of sysinfo
 		dw 		SystemInformation 
-		org 	$8008 								; $8008 3rd parameter register
-		dw 		0,0 		
-		org 	$8010 								; $8010 address of words list.
-		dw 	 	WordListAddress,0
+		org 	$8008 								; $8008 offset to first definition.
+WordListPointer:
+		dw 	 	linkHeader-WordListPointer,0
 
-Boot:	ld 		sp,StackTop							; reset Z80 Stack
+Boot:	db 		$DD,$01
+		ld 		sp,StackTop							; reset Z80 Stack
 		di											; disable interrupts
 		db 		$ED,$91,7,2							; set turbo port (7) to 2 (14Mhz speed)
-	
+		ld 		l,0	 								; graphic mode 0
+		call 	GFXMode
+		ld 		de,WordListPointer
+		ld 		hl,4
+		call 	GFXWriteHexWord
 		ld 		a,(StartAddressPage)				; Switch to start page
-		nextreg	$56,a
+		db 		$ED,$92,$56
 		inc 	a
-		nextreg	$57,a
+		db 		$ED,$92,$57
 		dec 	a
 		ex 		af,af'								; Set A' to current page.
-		ld 		ix,(StartAddress) 					; start running address
-		ld 		hl,$0000 							; clear A + B
-		ld 		de,$0000
-		jp 		(ix) 								; and start
+		ld 		hl,(StartAddress) 					; start running address
+		jp 		(hl) 								; and start
 
 __KernelHalt: 										; if boot address not set.
 		jr 		__KernelHalt
