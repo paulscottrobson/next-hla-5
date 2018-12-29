@@ -25,5 +25,3 @@ Expression:
 
 # TODO: 
 # 		Only create l-expr variables ?
-#		Identify a scheme for passing routines in.
-# 		Make the variables all inlineable in the same space again.

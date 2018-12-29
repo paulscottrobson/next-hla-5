@@ -17,7 +17,6 @@
 class DemoCodeGenerator(object):
 	def __init__(self):
 		self.pc = 0x1000
-		self.dpc = 0x2000
 		self.ops = { "+":"add","-":"sub","*":"mul","/":"div","%":"mod","&":"and","|":"ora","^":"xor" }
 	#
 	#		Get current address
@@ -91,9 +90,9 @@ class DemoCodeGenerator(object):
 	#		Allocate count bytes of meory, default is word size
 	#
 	def allocSpace(self,count = None,reason = None):
-		addr = self.dpc
+		addr = self.pc
 		count = self.getWordSize() if count is None else count
-		self.dpc += count
+		self.pc += count
 		print("${0:06x}  ds    ${1:04x} ; {2}".format(addr,count,"" if reason is None else reason))
 		return addr
 	#

@@ -50,19 +50,21 @@ class Assembler(object):
 		assert not source[0].startswith("proc") and len(source) % 2 != 0		# should be preamble and odd # parts
 		AssemblerException.LINE = source[0].count("~")							# start line.
 		for i in range(1,len(source),2):										# for each pair.
-			self.processProcedureHeader(source[i])								# process the header.
-			self.assembleProcedureBody(source[i+1])								# assemble the body.
+			self.processProcedure(source[i],source[i+1])						# process the header.
 		self.dictionary.endModule()												# only leave global procs.
 	#
 	#		Process procedure header (e.g. proc<identifier>(<params>)
+	#		then assemble the body.
 	#
-	def processProcedureHeader(self,header):
-		m = re.match("proc("+self.rxIdentifier+"\()(.*)\)",header)				# split into name and parameters.
+	def processProcedure(self,header,body):
+		m = re.match("proc("+self.rxIdentifier+")\((.*)\)",header)				# split into name and parameters.
 		if m is None:
 			raise AssemblerException("Bad procedure definition")
 
 		self.dictionary.removeLocalVariables()									# remove all locals.
-		params = self.processIdentifiers(m.group(2),False)						# Allocate local variables, get params.
+		params = self.processIdentifiers(m.group(2),False)						# Allocate local variables/params
+		body = self.processIdentifiers(body,False)								# Allocate other loca.s
+
 		params = [x for x in params.split(",") if x != ""]						# split into a list.
 		procID = ProcedureIdentifier(m.group(1),self.codeGen.getAddress(),len(params))
 		self.dictionary.addIdentifier(procID)									# save procedure getAddress
@@ -70,11 +72,7 @@ class Assembler(object):
 			if not params[i].startswith("@"):									# check parameters
 				raise AssemblerException("Bad parameter")
 			self.codeGen.storeParamRegister(i,int(params[i][1:]))				# write parameter to local variable.
-	#
-	#		Assemble the procedure body
-	#
-	def assembleProcedureBody(self,body):
-		body = self.processIdentifiers(body,False)								# should now only be proc calls as identifiers
+	#			
 		self.structureStack = [ "Marker" ]										# In case over popping.
 		for line in [x for x in body.split(":") if x != ""]:
 			if line == "~":														# is it a line marker ?
@@ -106,7 +104,7 @@ class Assembler(object):
 	#		Assemble a procedure invocation
 	#
 	def procedureCall(self,line):
-		m = re.match("^("+self.rxIdentifier+"\()(.*)\)$",line)					# split it up
+		m = re.match("^("+self.rxIdentifier+")\((.*)\)$",line)					# split it up
 		if m is None:
 			raise AssemblerException("Syntax error in procedure call")
 		parameters = [x for x in m.group(2).split(",") if x != ""]				# work through parameters
@@ -175,7 +173,6 @@ class Assembler(object):
 			if m is None:
 				m = re.match("^(\@?)(\d+)([\!\?])(\@?)(\d+)$",term) 			# complex. var/int[?!]var/int
 			if m is None:
-				print(term)
 				raise AssemblerException("Can't understand term "+term)
 			line[i] = m.groups()												# put it back in the list.
 		#
@@ -234,3 +231,14 @@ class Assembler(object):
 							self.dictionary.addIdentifier(info)
 						parts[i] = "@"+str(info.getValue())
 		return "".join(parts).replace("@@","")									# put it back together
+	#
+	#		Complete the assembly by writing the main procedure.
+	#
+	def createMain(self):
+		main = self.codeGen.getAddress()										# address of booting routine
+		booters = self.dictionary.getBootProcedures()							# get all .boot global procedures
+		for boot in booters:													# compile a call to each
+			self.codeGen.callSubroutine(boot)
+		here = self.codeGen.getAddress()
+		self.codeGen.jumpInstruction("",here)									# ending in an infinite loop.
+		return main

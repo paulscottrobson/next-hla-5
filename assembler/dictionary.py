@@ -75,3 +75,15 @@ class Dictionary(object):
 			if oldDictionary[name].isGlobal() and isinstance(oldDictionary[name],ProcedureIdentifier):		# do we keep it ?
 				self.identifiers[name] = oldDictionary[name]
 		self.identifiers["$return"] = oldDictionary["$return"]
+	#
+	#		Get all boot procedures.
+	#
+	def getBootProcedures(self):
+		bootList = []
+		self.endModule()
+		for k in self.identifiers.keys():
+			if isinstance(self.identifiers[k],ProcedureIdentifier):
+				if self.identifiers[k].getName().endswith(".boot"):
+					bootList.append(self.identifiers[k].getValue())
+		bootList.sort()
+		return bootList
