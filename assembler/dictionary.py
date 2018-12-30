@@ -34,6 +34,10 @@ class ProcedureIdentifier(Identifier):
 	def getParameterCount(self):
 		return self.paramCount
 
+class ExternalProcedureIdentifier(ProcedureIdentifier):
+	def isGlobal(self):
+		return True
+
 # ***************************************************************************************
 #									Dictionary object
 # ***************************************************************************************

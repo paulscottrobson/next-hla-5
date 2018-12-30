@@ -112,11 +112,10 @@ class BootImage(object):
 			start = start + self.read(0,start+0)+self.read(0,start+1)*256
 		#print(self.dictionary)			
 	#
-	#		Find a word in the dictionary.
+	#		Access the dictionary
 	#
-	def find(self,word):
-		word = word.strip().lower()
-		return self.dictionary[word] if word in self.dictionary else None
+	def getDictionary(self):
+		return self.dictionary
 	#
 	#		Write the image file out.
 	#

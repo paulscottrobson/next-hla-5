@@ -19,6 +19,11 @@ class DemoCodeGenerator(object):
 		self.pc = 0x1000
 		self.ops = { "+":"add","-":"sub","*":"mul","/":"div","%":"mod","&":"and","|":"ora","^":"xor" }
 	#
+	#		Load any external proc/func
+	#
+	def loadExternals(self,dictionary):
+		pass
+	#
 	#		Get current address
 	#
 	def getAddress(self):

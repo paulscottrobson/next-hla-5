@@ -9,7 +9,7 @@
 ; *********************************************************************************
 ; *********************************************************************************
 
-@word 	inkey(h1)
+@word 	console.inkey(h1)
 		call 	IOScanKeyboard 						; read keyboard
 		ld 		(hl),a 								; copy into variable
 		inc 	hl

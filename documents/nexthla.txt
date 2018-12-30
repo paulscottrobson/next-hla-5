@@ -23,7 +23,5 @@ Expression:
 	while (expr<#=0): ....:endwhile
 	for (expr):....:endfor
 
-# TODO: 
-# 		Only create l-expr variables ?
-#		Start on Z80 Code Generator.
-#
+
+

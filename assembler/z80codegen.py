@@ -9,6 +9,8 @@
 # ***************************************************************************************
 # ***************************************************************************************
 
+from dictionary import *
+
 # ***************************************************************************************
 #					This is a code generator for an idealised CPU
 #
@@ -17,6 +19,14 @@
 class Z80CodeGenerator(object):
 	def __init__(self,image):
 		self.image = image
+	#
+	#		Load Externals.
+	#
+	def loadExternals(self,dictionary):
+		d = self.image.getDictionary()
+		for name in d.keys():
+			xProc = ExternalProcedureIdentifier(name,d[name]["address"],d[name]["parameters"])
+			dictionary.addIdentifier(xProc)
 	#
 	#		Get current address
 	#

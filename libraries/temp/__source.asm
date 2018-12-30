@@ -321,18 +321,27 @@ __ZXWCExit:
 
 link6:
     dw link7-link6
- 	db "screen.setmode",1
+ 	db "console.setmode",1
 		jp 		GFXMode
 
 link7:
     dw link8-link7
- 	db "screen.write",2
+ 	db "console.write",2
 		jp 		GFXWriteCharacter
 
 link8:
     dw link9-link8
- 	db "screen.writehex",2
+ 	db "console.writehex",2
 		jp 		GFXWriteHexWord
+
+link9:
+    dw link10-link9
+ 	db "console.info",1
+		ld 		de,DisplayInformation
+		ld 		(hl),e
+		inc 	hl
+		ld 		(hl),d
+		ret
 
 ; *********************************************************************************
 ;
@@ -768,9 +777,9 @@ __LPExit:
 ; *********************************************************************************
 ; *********************************************************************************
 
-link9:
-    dw link10-link9
- 	db "inkey",1
+link10:
+    dw link11-link10
+ 	db "console.inkey",1
 		call 	IOScanKeyboard 						; read keyboard
 		ld 		(hl),a 								; copy into variable
 		inc 	hl
@@ -876,5 +885,5 @@ __kr_symbol_shift_table:
 		db 		3,  0,  0  ,'<','>',			16,17,18,19,20
 		db 		8, ')',23,  22, 21,				'"',';', 0, ']','['
 		db 		27, '=','+','-','^',			' ', 0, '.',',','*'
-link10:
+link11:
     dw 0

@@ -22,6 +22,7 @@ class Assembler(object):
 	def __init__(self,codeGenerator):
 		self.codeGen = codeGenerator 											# save the code generator
 		self.dictionary = Dictionary() 											# dictionary, ident to address mapping.
+		self.codeGen.loadExternals(self.dictionary)								# add any external words.
 		result = self.codeGen.allocSpace(None,"$return")						# $return global
 		self.dictionary.addIdentifier(VariableIdentifier("$return",result))
 		self.keywords = "if,endif,while,endwhile,for,endfor,endproc".split(",")

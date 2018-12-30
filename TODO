@@ -1,0 +1,12 @@
+# TODO: 
+#		Complete Z80 Code Generator:
+#		Write procedure parts so can create procedures and parameter save
+#			check $xxx.boot() works
+#		Check invocation of procedures and parameter setup
+#		Implement expression, check they work especially @<var>
+#		Check the stores work.
+#		Implement structures
+# 		Check the standard functions work (console)
+#
+#		Write a suitable wrapper allowing multiple source files
+# 		

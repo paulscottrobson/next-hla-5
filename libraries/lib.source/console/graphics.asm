@@ -9,15 +9,22 @@
 ; *********************************************************************************
 ; *********************************************************************************
 
-@word screen.setmode(hl)
+@word console.setmode(hl)
 		jp 		GFXMode
 
-@word screen.write(hl,de)
+@word console.write(hl,de)
 		jp 		GFXWriteCharacter
 
-@word screen.writehex(hl,de)
+@word console.writehex(hl,de)
 		jp 		GFXWriteHexWord
 
+@word console.info(hl)
+		ld 		de,DisplayInformation
+		ld 		(hl),e
+		inc 	hl
+		ld 		(hl),d
+		ret
+		
 ; *********************************************************************************
 ;
 ;								Set Graphics Mode to L
